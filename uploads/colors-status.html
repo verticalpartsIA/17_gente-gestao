@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Colors — Status</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .row{display:flex;align-items:stretch;border:1px solid var(--border)}
+  .row .solid{width:54px}
+  .row .info{flex:1;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between}
+  .name{font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:11px}
+  .hex{font-family:var(--font-mono);font-size:11px;color:var(--fg3)}
+  .tint{height:6px;margin-top:6px}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="row"><div class="solid" style="background:#2E7D32"></div><div class="info"><span class="name">Success</span><span class="hex">#2E7D32</span><div class="tint" style="background:#E8F5E9"></div></div></div>
+  <div class="row"><div class="solid" style="background:#1565C0"></div><div class="info"><span class="name">Info</span><span class="hex">#1565C0</span><div class="tint" style="background:#E3F2FD"></div></div></div>
+  <div class="row"><div class="solid" style="background:#ED8C00"></div><div class="info"><span class="name">Warning</span><span class="hex">#ED8C00</span><div class="tint" style="background:#FFF4E0"></div></div></div>
+  <div class="row"><div class="solid" style="background:#C62828"></div><div class="info"><span class="name">Danger</span><span class="hex">#C62828</span><div class="tint" style="background:#FDECEA"></div></div></div>
+</div>
+</body></html>

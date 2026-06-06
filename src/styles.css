@@ -1,0 +1,26 @@
+@import "../colors_and_type.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    color: #111;
+  }
+
+  /* Scrollbar personalizada para painéis escuros */
+  .dark-scroll::-webkit-scrollbar        { width: 5px; }
+  .dark-scroll::-webkit-scrollbar-track  { background: transparent; }
+  .dark-scroll::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.12); border-radius: 99px; }
+  .dark-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+}

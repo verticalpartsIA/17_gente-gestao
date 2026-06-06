@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Cards</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--vp-gray-50);font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+  .card{background:#fff;border:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:8px;transition:all .2s var(--ease-out)}
+  .card.sharp{border-radius:0}
+  .card.soft{border-radius:6px;box-shadow:var(--shadow-sm)}
+  .card.sharp:hover{border-color:#F5C400;transform:translateY(-3px)}
+  .eye{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--accent-press)}
+  .h{font-family:var(--font-display);font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:-.01em;color:#000}
+  .p{font-size:13px;line-height:1.55;color:var(--fg2)}
+  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:8px;border-top:1px solid var(--border)}
+  .sku{font-family:var(--font-mono);font-size:11px;color:var(--fg3)}
+  .price{font-weight:900;font-size:16px;font-variant-numeric:tabular-nums}
+  .stripe{width:24px;height:3px;background:#F5C400}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="card sharp">
+    <span class="stripe"></span>
+    <span class="eye">Catálogo · Escada rolante</span>
+    <div class="h">Corrimão Borracha 30mm</div>
+    <div class="p">Compatível com modelos Otis, Schindler e Atlas. Borracha vulcanizada de alta durabilidade.</div>
+    <div class="meta"><span class="sku">SKU VP-ESC-9821</span><span class="price">R$ 1.240,00</span></div>
+  </div>
+  <div class="card soft">
+    <span class="eye" style="color:var(--fg3)">Indicador · pipeline</span>
+    <div class="h" style="font-size:32px">R$ 450k</div>
+    <div class="p">+12,4% vs último trimestre.</div>
+  </div>
+</div>
+</body></html>

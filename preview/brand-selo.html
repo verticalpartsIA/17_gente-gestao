@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Brand Mark</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;font-family:var(--font-sans);background:#fff}
+  .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:0;min-height:220px}
+  .cell{display:flex;align-items:center;justify-content:center;padding:20px;position:relative}
+  .a{background:#fff;border-right:1px solid var(--border)}
+  .b{background:#000;border-right:1px solid #000}
+  .c{background:var(--vp-yellow)}
+  img{max-height:150px;max-width:88%}
+  .lbl{position:absolute;left:10px;top:10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em}
+  .lbl.dark{color:rgba(255,255,255,.55)}
+  .lbl.light{color:var(--fg3)}
+  .lbl.onyellow{color:#5C4900}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="cell a"><span class="lbl light">MARK · DEFAULT</span><img src="../assets/logo-mark.png" alt="Brand mark"/></div>
+  <div class="cell b"><span class="lbl dark">MARK · ON DARK</span><img src="../assets/logo-mark-white.png" alt="Brand mark white"/></div>
+  <div class="cell c"><span class="lbl onyellow">MARK · ON YELLOW</span><img src="../assets/logo-mark.png" alt="Brand mark on yellow"/></div>
+</div>
+</body></html>

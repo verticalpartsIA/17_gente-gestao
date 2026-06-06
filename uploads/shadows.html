@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Shadows</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--vp-gray-50);font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:30px 24px;display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+  .item{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .box{width:84px;height:60px;background:#fff;border:1px solid var(--border)}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg2)}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-xs)"></div><div class="lbl">xs</div></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-sm)"></div><div class="lbl">sm</div></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-md)"></div><div class="lbl">md</div></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-lg)"></div><div class="lbl">lg</div></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-xl)"></div><div class="lbl">xl</div></div>
+  <div class="item"><div class="box" style="background:#F5C400;box-shadow:var(--shadow-yellow);border-color:#F5C400"></div><div class="lbl">yellow</div></div>
+</div>
+</body></html>

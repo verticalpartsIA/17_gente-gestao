@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Inputs</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--fg2)}
+  input,select{font-family:var(--font-sans);font-size:14px;padding:12px 14px;border:1px solid var(--border-strong);background:#fff;border-radius:4px;outline:none}
+  input:focus{border-color:#F5C400;box-shadow:0 0 0 3px rgba(245,196,0,.25)}
+  .help{font-size:11px;color:var(--fg3)}
+  .err input{border-color:#C62828}
+  .err .help{color:#C62828}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="field"><span class="lbl">SKU da peça</span><input value="VP-ESC-9821-A" /><span class="help">Use o código completo, com hífens.</span></div>
+  <div class="field"><span class="lbl">Equipamento</span><select><option>Escada Rolante</option><option>Elevador</option><option>Esteira</option></select></div>
+  <div class="field"><span class="lbl">Email</span><input placeholder="seu@email.com.br" /></div>
+  <div class="field err"><span class="lbl">Quantidade</span><input value="abc" /><span class="help">Informe um número inteiro.</span></div>
+</div>
+</body></html>

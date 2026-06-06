@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Badges</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:22px;display:flex;flex-direction:column;gap:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--fg3);min-width:100px}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:5px 10px}
+  .b-yellow{background:rgba(245,196,0,.10);color:#7A6200;border-left:3px solid #F5C400}
+  .b-solid{background:#000;color:#F5C400}
+  .b-success{background:#E8F5E9;color:#1B5E20}
+  .b-warn{background:#FFF4E0;color:#9A5A00}
+  .b-danger{background:#FDECEA;color:#8C1414}
+  .b-mono{background:#F2F2F2;color:#000;font-family:var(--font-mono);letter-spacing:0;font-weight:600}
+  .pill{border-radius:999px}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="row"><span class="lbl">Brand</span>
+    <span class="badge b-yellow">Automação de Vendas</span>
+    <span class="badge b-solid">VP Click</span>
+  </div>
+  <div class="row"><span class="lbl">Status</span>
+    <span class="badge b-success"><span class="dot"></span>Em estoque</span>
+    <span class="badge b-warn"><span class="dot"></span>Reposição</span>
+    <span class="badge b-danger"><span class="dot"></span>Esgotado</span>
+  </div>
+  <div class="row"><span class="lbl">SKU / Tag</span>
+    <span class="badge b-mono pill">VP-ELV-1240</span>
+    <span class="badge b-mono pill">24V DC</span>
+  </div>
+</div>
+</body></html>

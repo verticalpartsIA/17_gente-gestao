@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Logo Lockup</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;font-family:var(--font-sans);height:100%}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;height:100vh;min-height:220px}
+  .panel{display:flex;align-items:center;justify-content:center;padding:20px;position:relative}
+  .light{background:#fff;border-right:1px solid var(--border)}
+  .dark{background:#000}
+  .panel img{max-width:92%;max-height:72%;display:block;width:auto}
+  .tag{position:absolute;left:10px;bottom:10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em}
+  .tag.l{color:var(--fg3)}
+  .tag.d{color:rgba(255,255,255,.55)}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="panel light">
+    <img src="../assets/logo-verticalparts-color.png" alt="Vertical Parts logo (color)"/>
+    <span class="tag l">LOGO HORIZONTAL · ON LIGHT</span>
+  </div>
+  <div class="panel dark">
+    <img src="../assets/logo-verticalparts-white.png" alt="Vertical Parts logo (white)"/>
+    <span class="tag d">LOGO HORIZONTAL · ON DARK</span>
+  </div>
+</div>
+</body></html>

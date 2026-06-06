@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:22px;display:flex;flex-direction:column;gap:14px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:12px;border:none;cursor:pointer;border-radius:0;transition:all .2s var(--ease-out);font-family:var(--font-sans)}
+  .btn-primary{background:#F5C400;color:#000}
+  .btn-primary:hover{background:#FFD400;box-shadow:var(--shadow-yellow)}
+  .btn-secondary{background:#000;color:#fff}
+  .btn-outline{background:transparent;color:#000;border:2px solid #000}
+  .btn-outline:hover{background:#F5C400;border-color:#F5C400}
+  .btn-ghost{background:transparent;color:#000}
+  .btn-ghost:hover{color:#C99E00}
+  .btn-sm{padding:8px 14px;font-size:11px}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--fg3);min-width:90px}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="row"><span class="lbl">Primary</span><button class="btn btn-primary">Solicitar Orçamento →</button><button class="btn btn-primary btn-sm">Acessar</button></div>
+  <div class="row"><span class="lbl">Secondary</span><button class="btn btn-secondary">Entrar no Sistema</button><button class="btn btn-outline">Ver Catálogo</button></div>
+  <div class="row"><span class="lbl">Ghost</span><button class="btn btn-ghost">Saiba mais</button></div>
+</div>
+</body></html>

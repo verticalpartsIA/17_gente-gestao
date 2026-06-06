@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Colors — Primary</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--fg1)}
+  .wrap{padding:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .sw{display:flex;flex-direction:column;gap:6px}
+  .chip{height:96px;border:1px solid var(--border);position:relative;display:flex;align-items:flex-end;padding:10px}
+  .chip .role{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--fg-on-dark)}
+  .chip.lt .role{color:var(--fg1)}
+  .meta{display:flex;justify-content:space-between;font-size:11px}
+  .name{font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .hex{font-family:var(--font-mono);color:var(--fg3)}
+</style></head><body class="vp">
+<div class="wrap">
+  <div class="sw"><div class="chip" style="background:#F5C400;border-color:#F5C400" ><span class="role" style="color:#000">accent</span></div><div class="meta"><span class="name">Yellow</span><span class="hex">#F5C400</span></div></div>
+  <div class="sw"><div class="chip" style="background:#000"><span class="role">surface inverse</span></div><div class="meta"><span class="name">Black</span><span class="hex">#000000</span></div></div>
+  <div class="sw"><div class="chip" style="background:#808080"><span class="role">brand gray</span></div><div class="meta"><span class="name">Gray 500</span><span class="hex">#808080</span></div></div>
+  <div class="sw"><div class="chip lt" style="background:#FFFFFF;border-color:#E5E5E5"><span class="role">surface</span></div><div class="meta"><span class="name">White</span><span class="hex">#FFFFFF</span></div></div>
+</div>
+</body></html>
