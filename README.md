@@ -175,3 +175,13 @@ O sistema de rotas client-side mapeia a seguinte estrutura hierárquica:
 ## 📄 Licença e Uso
 
 Uso interno restrito. Propriedade exclusiva da **VerticalParts © 2026**. Todos os direitos reservados.
+
+---
+
+## Contributors
+
+- Gelson Simões — criador e responsável pelas soluções VerticalParts
+
+---
+
+**Feito por Gelson Simões**
