@@ -13,20 +13,17 @@ import {
   X
 } from 'lucide-react'
 
-// ── Data from HTML prototype ──────────────────────────────────────────────────
+// ── Data real — Organograma Operacional VerticalParts (julho 2026) ────────────
 
 const DEPT_COLORS: Record<string, string> = {
-  'Diretoria':            '#F5C400',
-  'Comercial':            '#2563EB',
-  'Qualidade':            '#16A34A',
-  'Adm./Financeiro':      '#7C3AED',
-  'Marketing':            '#D97706',
-  'Jurídico/Suprimentos': '#595E6B',
-  'Consultoria Técnica':  '#C99E00',
-  'Almoxarifado':         '#595E6B',
-  'Produção':             '#DC2626',
-  'Logística':            '#0D9488',
-  'Engenharia':           '#4F46E5',
+  'Diretoria':          '#F5C400',
+  'Logística':          '#0D9488',
+  'Almoxarifado/PCP':   '#7C3AED',
+  'Produção':           '#DC2626',
+  'Consultoria Técnica':'#C99E00',
+  'Inst. e Montagem':   '#2563EB',
+  'Projetos/TI':        '#4F46E5',
+  'Operações':          '#16A34A',
 }
 
 interface Person {
@@ -40,73 +37,65 @@ interface Person {
 }
 
 const CEO: Person = {
-  initials: 'GS',
-  name: 'Gelson Simões',
-  role: 'CEO & Sócio-Fundador',
+  initials: 'DM',
+  name: 'Diego Maeno',
+  role: 'CEO',
   dept: 'Diretoria',
   nivel: 'Diretoria',
   reports: [
     {
-      initials: 'AP', name: 'Ana Paula Rocha', role: 'Gerente Comercial',        dept: 'Comercial',           nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
+      initials: 'DO', name: 'Danilo Oliveira', role: 'Sup. de Logística',
+      dept: 'Logística', nivel: 'Gerência / Coord.', manager: 'Diego Maeno',
       reports: [
-        { initials: 'BA', name: 'Bruno Almeida',   role: 'Executivo de Vendas', dept: 'Comercial',   nivel: 'Operacional', manager: 'Ana Paula Rocha' },
-        { initials: 'CF', name: 'Camila Ferraz',   role: 'Executiva de Vendas', dept: 'Comercial',   nivel: 'Operacional', manager: 'Ana Paula Rocha' },
+        { initials: 'AC', name: 'Aurélio Carvalho', role: 'Técnico de Campo Sênior',  dept: 'Logística',        nivel: 'Operacional', manager: 'Danilo Oliveira' },
+        { initials: 'JC', name: 'Juciê Santos',     role: 'Aux. de Produção',         dept: 'Produção',         nivel: 'Operacional', manager: 'Danilo Oliveira' },
+        { initials: 'GS', name: 'Gustavo da Silva', role: 'Aux. de Produção',         dept: 'Produção',         nivel: 'Operacional', manager: 'Danilo Oliveira' },
+        { initials: 'MN', name: 'Marco Antonio',    role: 'Ajudante Geral',           dept: 'Logística',        nivel: 'Operacional', manager: 'Danilo Oliveira' },
+        {
+          initials: 'FC', name: 'Franklin Costa', role: 'Analista Almoxarifado',
+          dept: 'Almoxarifado/PCP', nivel: 'Operacional', manager: 'Danilo Oliveira',
+          reports: [
+            { initials: 'TA', name: 'Tiago Acacio', role: 'Assist. Almoxarifado', dept: 'Almoxarifado/PCP', nivel: 'Operacional', manager: 'Franklin Costa' },
+          ]
+        },
+        { initials: 'MR', name: 'Matheus Rocha', role: 'Assist. Expedição', dept: 'Logística', nivel: 'Operacional', manager: 'Danilo Oliveira' },
+        {
+          initials: 'MT', name: 'Magda Torres', role: 'Assist. PCP',
+          dept: 'Almoxarifado/PCP', nivel: 'Operacional', manager: 'Danilo Oliveira',
+          reports: [
+            { initials: 'NC', name: 'Nailson Cruz',   role: 'Serralheiro', dept: 'Produção',  nivel: 'Operacional', manager: 'Magda Torres' },
+            { initials: 'EJ', name: 'Edmilson Jesus', role: 'Motorista',   dept: 'Logística', nivel: 'Operacional', manager: 'Magda Torres' },
+          ]
+        },
       ]
     },
     {
-      initials: 'RL', name: 'Roberto Lima', role: 'Coord. de Qualidade',          dept: 'Qualidade',           nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
+      initials: 'GE', name: 'Gelson Simões', role: 'Consultor Técnico Estratégico',
+      dept: 'Consultoria Técnica', nivel: 'Gerência / Coord.', manager: 'Diego Maeno',
       reports: [
-        { initials: 'DS', name: 'Daniela Souza', role: 'Analista de Qualidade',   dept: 'Qualidade',   nivel: 'Operacional', manager: 'Roberto Lima' },
+        { initials: 'GB', name: 'Gesse Batista', role: 'Motorista', dept: 'Logística', nivel: 'Operacional', manager: 'Gelson Simões' },
+        {
+          initials: 'MA', name: 'Mauricio Araujo', role: 'Supervisor de Inst. e Montagem',
+          dept: 'Inst. e Montagem', nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
+          reports: [
+            { initials: 'SE', name: 'Silvio Elias', role: 'Tec. de Instalação e Manut. Sênior', dept: 'Inst. e Montagem', nivel: 'Operacional', manager: 'Mauricio Araujo' },
+          ]
+        },
+        {
+          initials: 'VL', name: 'Vinicius Leite', role: 'Analista de Projetos - BST Monarch',
+          dept: 'Projetos/TI', nivel: 'Operacional', manager: 'Gelson Simões',
+          reports: [
+            { initials: 'FB', name: 'Felipe Barros', role: 'Jovem Aprendiz', dept: 'Projetos/TI', nivel: 'Operacional', manager: 'Vinicius Leite' },
+          ]
+        },
       ]
     },
     {
-      initials: 'RF', name: 'Roberto Faria', role: 'Gerente Adm./Financeiro',     dept: 'Adm./Financeiro',     nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
+      initials: 'AA', name: 'Arilene Avila', role: 'Gestora de Operações',
+      dept: 'Operações', nivel: 'Gerência / Coord.', manager: 'Diego Maeno',
       reports: [
-        { initials: 'BN', name: 'Beatriz Nunes',  role: 'Assistente Financeiro',  dept: 'Adm./Financeiro', nivel: 'Operacional', manager: 'Roberto Faria' },
-        { initials: 'RT', name: 'Rafael Teixeira', role: 'Assistente Financeiro', dept: 'Adm./Financeiro', nivel: 'Operacional', manager: 'Roberto Faria' },
-      ]
-    },
-    {
-      initials: 'JM', name: 'Juliana Melo', role: 'Coord. de Marketing',          dept: 'Marketing',           nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'LC', name: 'Lucas Carvalho', role: 'Designer Gráfico',       dept: 'Marketing',   nivel: 'Operacional', manager: 'Juliana Melo' },
-      ]
-    },
-    {
-      initials: 'FC', name: 'Fernando Coelho', role: 'Coord. Jurídico/Suprimentos', dept: 'Jurídico/Suprimentos', nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: []
-    },
-    {
-      initials: 'MC', name: 'Mariana Costa', role: 'Supervisora de Consultoria',  dept: 'Consultoria Técnica', nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'EP', name: 'Eduardo Pires',  role: 'Consultor Técnico',       dept: 'Consultoria Técnica', nivel: 'Operacional', manager: 'Mariana Costa' },
-        { initials: 'FL', name: 'Fernanda Lima',  role: 'Consultora Técnica',      dept: 'Consultoria Técnica', nivel: 'Operacional', manager: 'Mariana Costa' },
-      ]
-    },
-    {
-      initials: 'PR', name: 'Paulo Rodrigues', role: 'Coord. de Almoxarifado',    dept: 'Almoxarifado',        nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'SO', name: 'Sandra Oliveira', role: 'Aux. de Almoxarifado',  dept: 'Almoxarifado', nivel: 'Operacional', manager: 'Paulo Rodrigues' },
-      ]
-    },
-    {
-      initials: 'CM', name: 'Carlos Mendes', role: 'Supervisor de Produção',      dept: 'Produção',            nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'TB', name: 'Thiago Barbosa', role: 'Técnico de Manutenção',  dept: 'Produção', nivel: 'Operacional', manager: 'Carlos Mendes' },
-        { initials: 'VC', name: 'Vinícius Castro', role: 'Técnico de Manutenção', dept: 'Produção', nivel: 'Operacional', manager: 'Carlos Mendes' },
-      ]
-    },
-    {
-      initials: 'FS', name: 'Felipe Santos', role: 'Coord. de Logística',         dept: 'Logística',           nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'JF', name: 'João Figueiredo', role: 'Aux. de Logística',     dept: 'Logística', nivel: 'Operacional', manager: 'Felipe Santos' },
-        { initials: 'PC', name: 'Priya Correia',   role: 'Aux. de Logística',     dept: 'Logística', nivel: 'Operacional', manager: 'Felipe Santos' },
-      ]
-    },
-    {
-      initials: 'DA', name: 'Diego Alves', role: 'Engenheiro de Projetos',        dept: 'Engenharia',          nivel: 'Gerência / Coord.', manager: 'Gelson Simões',
-      reports: [
-        { initials: 'IM', name: 'Isabela Martins', role: 'Engenheira de Projetos',dept: 'Engenharia', nivel: 'Operacional', manager: 'Diego Alves' },
+        { initials: 'AS', name: 'Alexandre Schmidt', role: 'Engenheiro',        dept: 'Operações', nivel: 'Operacional', manager: 'Arilene Avila' },
+        { initials: 'BS', name: 'Brayan Souza',      role: 'Tec. Mecatrônico', dept: 'Operações', nivel: 'Operacional', manager: 'Arilene Avila' },
       ]
     },
   ]
@@ -154,8 +143,8 @@ export default function OrganogramaPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard icon={Users}     color="blue"  label="COLABORADORES"  value="21" sub="Total na empresa" />
-          <KpiCard icon={Building2} color="green" label="DEPARTAMENTOS"  value="10" sub="Áreas ativas" />
-          <KpiCard icon={UserCheck} color="brand" label="GESTORES"       value="11" sub="Líderes de área" />
+          <KpiCard icon={Building2} color="green" label="DEPARTAMENTOS"  value="8"  sub="Áreas funcionais" />
+          <KpiCard icon={UserCheck} color="brand" label="GESTORES"       value="5"  sub="Líderes de área" />
           <KpiCard icon={Network}   color="blue"  label="NÍVEIS HIERÁRQUICOS" value="3" sub="Diretoria / Gerência / Operacional" />
         </div>
 
