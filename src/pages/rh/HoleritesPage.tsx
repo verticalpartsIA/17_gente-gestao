@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import {
   DollarSign,
-  FileText,
   Gift,
   Download,
   Eye

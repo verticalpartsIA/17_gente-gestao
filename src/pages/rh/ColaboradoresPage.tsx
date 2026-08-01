@@ -253,7 +253,7 @@ export default function ColaboradoresPage() {
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-fg-on-dark tracking-wide uppercase">{emp.name}</h4>
                       {emp.is_department_lead && (
-                        <Star className="h-3.5 w-3.5 text-primary fill-primary" title="Líder de departamento" />
+                        <Star className="h-3.5 w-3.5 text-primary fill-primary" aria-label="Líder de departamento" />
                       )}
                     </div>
                     <p className="text-xs text-fg3 font-mono">{emp.email}</p>
@@ -268,8 +268,8 @@ export default function ColaboradoresPage() {
                   }>
                     {emp.level}
                   </Badge>
-                  <Badge variant={emp.is_active ? 'success' : 'danger'}>
-                    {emp.is_active ? 'Ativo' : 'Inativo'}
+                  <Badge variant={emp.status === 'Ativo' ? 'success' : 'danger'}>
+                    {emp.status}
                   </Badge>
                 </div>
               </div>

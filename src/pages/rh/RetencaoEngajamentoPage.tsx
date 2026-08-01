@@ -10,8 +10,6 @@ import {
   Users,
   ThumbsUp,
   ThumbsDown,
-  MessageSquare,
-  TrendingUp,
   Plus
 } from 'lucide-react'
 

@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import {
-  Award,
   Target,
   BookOpen,
   ClipboardCheck,
   TrendingUp,
-  CheckCircle,
   Clock,
-  XCircle,
   Plus
 } from 'lucide-react'
 

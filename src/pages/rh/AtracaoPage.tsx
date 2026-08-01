@@ -12,12 +12,7 @@ import {
   CheckCircle,
   X,
   Plus,
-  Search,
-  MessageSquare,
-  Calendar,
-  FileText,
-  ChevronRight,
-  Star
+  ChevronRight
 } from 'lucide-react'
 
 // ── Data from HTML prototype ──────────────────────────────────────────────────

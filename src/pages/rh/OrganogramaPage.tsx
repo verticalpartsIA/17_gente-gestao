@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { NAV_ITEMS } from '../DashboardPage'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
-import { Button } from '@/components/ui/Button'
 import {
   Users,
   Building2,

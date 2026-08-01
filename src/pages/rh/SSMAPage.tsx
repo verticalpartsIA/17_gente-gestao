@@ -10,7 +10,6 @@ import {
   HeartPulse,
   AlertTriangle,
   CheckCircle,
-  HardHat,
   Plus,
   FileText
 } from 'lucide-react'
