@@ -1,375 +1,254 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
-import { Field } from '@/components/auth/Field'
-import { 
-  Car, 
-  AlertTriangle, 
-  Plus, 
-  ShieldCheck
+import {
+  Car,
+  AlertTriangle,
+  Wrench,
+  Gauge,
+  Plus,
+  Eye
 } from 'lucide-react'
 
-interface Vehicle {
-  id: string
-  plate: string
-  model: string
-  brand: string
-  assignedTo: string
-  licensingExpiry: string
-  status: 'Disponível' | 'Em Uso' | 'Manutenção'
-}
+// ── Data from HTML prototype ──────────────────────────────────────────────────
 
-interface Fine {
-  id: string
-  plate: string
-  driverName: string
-  infraction: string
-  amount: string
-  points: number
-  date: string
-  status: 'Pendente' | 'Reconhecido' | 'Recurso'
-}
-
-const INITIAL_VEHICLES: Vehicle[] = [
-  { id: 'veh-1', plate: 'VP-1234', model: 'Fiorino 1.4', brand: 'Fiat', assignedTo: 'Carlos Oliveira', licensingExpiry: '2026-08-30', status: 'Em Uso' },
-  { id: 'veh-2', plate: 'VP-8980', model: 'Saveiro Trendline', brand: 'VW', assignedTo: 'Sem motorista', licensingExpiry: '2026-10-15', status: 'Disponível' },
-  { id: 'veh-3', plate: 'VP-4490', model: 'Daily Cargo', brand: 'Iveco', assignedTo: 'Marcos Pontes', licensingExpiry: '2026-06-25', status: 'Em Uso' }
+const VEICULOS = [
+  { placa: 'ABC-1234', modelo: 'VW Gol',            ano: 2021, tipo: 'Hatch',  depto: 'Logística',          responsavel: 'Felipe Santos',   km: '84.320',  status: 'Regular' },
+  { placa: 'DEF-5678', modelo: 'Fiat Strada',       ano: 2020, tipo: 'Pickup', depto: 'Logística',          responsavel: 'João Figueiredo', km: '67.150',  status: 'Regular' },
+  { placa: 'GHI-9012', modelo: 'Ford Transit',      ano: 2019, tipo: 'Van',    depto: 'Logística',          responsavel: 'Priya Correia',   km: '102.840', status: 'Atenção' },
+  { placa: 'JKL-3456', modelo: 'Toyota Hilux',      ano: 2022, tipo: '4x4',   depto: 'Consultoria Técnica', responsavel: 'Eduardo Pires',   km: '48.920',  status: 'Regular' },
+  { placa: 'MNO-7890', modelo: 'Renault Duster',    ano: 2020, tipo: 'SUV',   depto: 'Comercial',           responsavel: 'Bruno Almeida',   km: '59.430',  status: 'Regular' },
+  { placa: 'PQR-1122', modelo: 'Mercedes Sprinter', ano: 2018, tipo: 'Furgão',depto: 'Produção',            responsavel: 'Vinícius Castro', km: '148.160', status: 'Crítico' },
 ]
 
-const INITIAL_FINES: Fine[] = [
-  { id: 'fine-1', plate: 'VP-1234', driverName: 'Carlos Oliveira', infraction: 'Excesso de velocidade (até 20%)', amount: 'R$ 130,16', points: 4, date: '2026-05-22', status: 'Pendente' },
-  { id: 'fine-2', plate: 'VP-4490', driverName: 'Marcos Pontes', infraction: 'Uso de celular ao conduzir', amount: 'R$ 293,47', points: 7, date: '2026-04-10', status: 'Reconhecido' }
+const INFRACOES = [
+  { placa: 'GHI-9012', data: '15/07/2026', tipo: 'Excesso de velocidade',    pontos: 4, valor: 'R$ 195,23', status: 'Pendente'    },
+  { placa: 'MNO-7890', data: '08/07/2026', tipo: 'Uso de celular ao volante', pontos: 7, valor: 'R$ 293,47', status: 'Pendente'    },
+  { placa: 'ABC-1234', data: '02/07/2026', tipo: 'Estacionamento irregular',  pontos: 3, valor: 'R$ 130,16', status: 'Pago'        },
+  { placa: 'PQR-1122', data: '22/06/2026', tipo: 'Avanço de sinal vermelho',  pontos: 7, valor: 'R$ 293,47', status: 'Contestado'  },
+  { placa: 'DEF-5678', data: '10/06/2026', tipo: 'Excesso de velocidade',     pontos: 3, valor: 'R$ 130,16', status: 'Pago'        },
 ]
+
+const MANUTENCOES = [
+  { placa: 'PQR-1122', modelo: 'Mercedes Sprinter', tipo: 'Revisão geral + troca de correia',   previsao: '25/07/2026', urgencia: 'Urgente'    },
+  { placa: 'GHI-9012', modelo: 'Ford Transit',      tipo: 'Alinhamento, balanceamento e pneus', previsao: '30/07/2026', urgencia: 'Em Breve'   },
+  { placa: 'ABC-1234', modelo: 'VW Gol',            tipo: 'Troca de óleo e filtros',            previsao: '15/08/2026', urgencia: 'Programado' },
+  { placa: 'DEF-5678', modelo: 'Fiat Strada',       tipo: 'Revisão dos 70.000 km',              previsao: '20/08/2026', urgencia: 'Programado' },
+  { placa: 'JKL-3456', modelo: 'Toyota Hilux',      tipo: 'Troca de óleo + filtro de ar',       previsao: '05/09/2026', urgencia: 'Programado' },
+]
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function veiculoStatusBadge(status: string) {
+  if (status === 'Regular') return <Badge variant="success">{status}</Badge>
+  if (status === 'Atenção') return <Badge variant="warning">{status}</Badge>
+  if (status === 'Crítico') return <Badge variant="danger">{status}</Badge>
+  return <Badge>{status}</Badge>
+}
+
+function infracaoStatusBadge(status: string) {
+  if (status === 'Pago')       return <Badge variant="success">{status}</Badge>
+  if (status === 'Pendente')   return <Badge variant="danger">{status}</Badge>
+  if (status === 'Contestado') return <Badge variant="warning">{status}</Badge>
+  return <Badge>{status}</Badge>
+}
+
+function urgenciaBadge(urgencia: string) {
+  if (urgencia === 'Urgente')    return <Badge variant="danger">{urgencia}</Badge>
+  if (urgencia === 'Em Breve')   return <Badge variant="warning">{urgencia}</Badge>
+  if (urgencia === 'Programado') return <Badge variant="info">{urgencia}</Badge>
+  return <Badge>{urgencia}</Badge>
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FrotaPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tabParam = searchParams.get('tab') || 'veiculos'
-  
-  const [activeTab, setActiveTab] = useState<string>(tabParam)
+  const [activeTab, setActiveTab] = useState(0)
 
-  useEffect(() => {
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam)
-    }
-  }, [tabParam])
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
-    setSearchParams({ tab })
-  }
-
-  const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES)
-  const [fines, setFines] = useState<Fine[]>(INITIAL_FINES)
-  
-  const [showVehicleForm, setShowVehicleForm] = useState(false)
-  const [showFineForm, setShowFineForm] = useState(false)
-  const [recognizeModal, setRecognizeModal] = useState(false)
-  const [activeFine, setActiveFine] = useState<Fine | null>(null)
-
-  // Form states Veículo
-  const [formPlate, setFormPlate] = useState('')
-  const [formModel, setFormModel] = useState('')
-  const [formBrand, setFormBrand] = useState('')
-
-  // Form states Multa
-  const [formFinePlate, setFormFinePlate] = useState('')
-  const [formFineDriver, setFormFineDriver] = useState('')
-  const [formFineDesc, setFormFineDesc] = useState('')
-  const [formFineAmount, setFormFineAmount] = useState('')
-
-  const handleAddVehicle = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formPlate || !formModel || !formBrand) return
-    const newVeh: Vehicle = {
-      id: 'veh-' + Math.random().toString(36).substring(2),
-      plate: formPlate,
-      model: formModel,
-      brand: formBrand,
-      assignedTo: 'Sem motorista',
-      licensingExpiry: '2027-01-01',
-      status: 'Disponível'
-    }
-    setVehicles([...vehicles, newVeh])
-    setShowVehicleForm(false)
-    setFormPlate('')
-    setFormModel('')
-    setFormBrand('')
-  }
-
-  const handleAddFine = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formFinePlate || !formFineDriver || !formFineDesc) return
-    const newFine: Fine = {
-      id: 'fine-' + Math.random().toString(36).substring(2),
-      plate: formFinePlate,
-      driverName: formFineDriver,
-      infraction: formFineDesc,
-      amount: formFineAmount || 'R$ 130,16',
-      points: 4,
-      date: new Date().toISOString().split('T')[0],
-      status: 'Pendente'
-    }
-    setFines([newFine, ...fines])
-    setShowFineForm(false)
-    setFormFinePlate('')
-    setFormFineDriver('')
-    setFormFineDesc('')
-    setFormFineAmount('')
-  }
-
-  const openRecognize = (fine: Fine) => {
-    setActiveFine(fine)
-    setRecognizeModal(true)
-  }
-
-  const handleConfirmRecognition = () => {
-    if (!activeFine) return
-    setFines(fines.map(f => {
-      if (f.id === activeFine.id) {
-        return { ...f, status: 'Reconhecido' }
-      }
-      return f
-    }))
-    setRecognizeModal(false)
-    setActiveFine(null)
-  }
+  const TABS = ['Veículos', 'Infrações', 'Manutenção']
 
   return (
-    <AppShell navItems={NAV_ITEMS} pageTitle="GESTÃO DE FROTA E MULTAS">
+    <AppShell navItems={NAV_ITEMS} pageTitle="GESTÃO DE FROTA">
       <div className="space-y-6">
-        
-        {/* TAB CONTROLS */}
-        <div className="flex border-b border-surface-border bg-surface-card p-1 gap-1">
-          {[
-            { id: 'veiculos', label: 'Cadastro de Veículos' },
-            { id: 'multas', label: 'Infrações e Multas' }
-          ].map(tab => (
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <KpiCard icon={Car}           color="blue"   label="VEÍCULOS NA FROTA"    value="6"       sub="Ativos e monitorados" />
+          <KpiCard icon={Gauge}         color="green"  label="KM TOTAL RODADOS"     value="410.820" sub="Total acumulado da frota" />
+          <KpiCard icon={AlertTriangle} color="red"    label="MULTAS PENDENTES"      value="2"       sub="R$ 488,70 a regularizar" />
+          <KpiCard icon={Wrench}        color="orange" label="MANUTENÇÕES PRÓXIMAS" value="2"       sub="Nos próximos 7 dias" />
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-neutral-200">
+          {TABS.map((tab, i) => (
             <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`flex-1 py-2 text-[11px] font-bold font-sans tracking-wider uppercase border-t-2 transition-all ${
-                activeTab === tab.id 
-                  ? 'border-t-primary bg-surface text-primary' 
-                  : 'border-t-transparent text-slate-400 hover:text-white'
+              key={i}
+              onClick={() => setActiveTab(i)}
+              className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                activeTab === i
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800'
               }`}
             >
-              {tab.label}
+              {tab}
             </button>
           ))}
         </div>
 
-        {/* KPI CARDS */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <KpiCard
-            icon={Car}
-            color="brand"
-            label="FROTA DE VEÍCULOS"
-            value={`${vehicles.length} Veículos`}
-            sub="2 em uso, 1 disponível"
-          />
-          <KpiCard
-            icon={AlertTriangle}
-            color="red"
-            label="INFRAÇÕES PENDENTES"
-            value={`${fines.filter(f => f.status === 'Pendente').length} Multas`}
-            sub="Aguardando assinatura de reconhecimento"
-          />
-          <KpiCard
-            icon={ShieldCheck}
-            color="green"
-            label="VENCIMENTO DE CNHs"
-            value="100% Válidos"
-            sub="Nenhuma CNH vencida no banco"
-          />
-        </div>
-
-        {/* TAB CONTENT: VEICULOS */}
-        {activeTab === 'veiculos' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between border-b border-surface-border pb-4">
-              <CardTitle>VEÍCULOS DA FROTA</CardTitle>
-              <Button size="sm" onClick={() => setShowVehicleForm(true)} rightIcon={<Plus className="h-4 w-4" />}>
-                CADASTRAR VEÍCULO
-              </Button>
+        {/* Tab 0 — Veículos */}
+        {activeTab === 0 && (
+          <Card theme="light" noPadding>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
+              <CardTitle>Frota de Veículos</CardTitle>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Adicionar Veículo</Button>
             </CardHeader>
-            <CardContent className="divide-y divide-surface-border">
-              {vehicles.map(veh => (
-                <div key={veh.id} className="py-4 flex justify-between items-start">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase text-xs">{veh.brand} {veh.model}</h4>
-                    <p className="text-xs text-fg3 font-mono">PLACA: {veh.plate} | LICENCIAMENTO VENCE EM: {veh.licensingExpiry}</p>
-                    <p className="text-xs text-fg3 font-mono mt-1">MOTORISTA RESPONSÁVEL: {veh.assignedTo}</p>
-                  </div>
-                  <Badge variant={veh.status === 'Disponível' ? 'success' : veh.status === 'Manutenção' ? 'danger' : 'collaborator'}>
-                    {veh.status.toUpperCase()}
-                  </Badge>
-                </div>
-              ))}
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-100 bg-neutral-50">
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Placa</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Modelo / Ano</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Tipo</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Departamento</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Responsável</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-neutral-500">KM</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {VEICULOS.map((v, i) => (
+                    <tr key={i} className="hover:bg-neutral-50">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center rounded bg-neutral-800 px-2 py-1 font-mono text-xs font-bold text-white">
+                          {v.placa}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-neutral-900">{v.modelo}</span>{' '}
+                        <span className="text-neutral-400">{v.ano}</span>
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">{v.tipo}</td>
+                      <td className="px-4 py-3 text-neutral-600">{v.depto}</td>
+                      <td className="px-4 py-3 text-neutral-600">{v.responsavel}</td>
+                      <td className="px-4 py-3 text-right font-mono text-sm text-neutral-700">{v.km} km</td>
+                      <td className="px-4 py-3">{veiculoStatusBadge(v.status)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </CardContent>
           </Card>
         )}
 
-        {/* TAB CONTENT: MULTAS */}
-        {activeTab === 'multas' && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between border-b border-surface-border pb-4">
-              <CardTitle>REGISTRO E AUTORIZAÇÃO DE MULTAS</CardTitle>
-              <Button size="sm" onClick={() => setShowFineForm(true)} rightIcon={<Plus className="h-4 w-4" />}>
-                REGISTRAR MULTA
-              </Button>
+        {/* Tab 1 — Infrações */}
+        {activeTab === 1 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-lg border border-neutral-200 bg-white p-4 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Total de Multas</p>
+                <p className="mt-1 text-2xl font-bold text-neutral-900">R$ 1.042,49</p>
+              </div>
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-600">Pendente de Pagamento</p>
+                <p className="mt-1 text-2xl font-bold text-red-700">R$ 488,70</p>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+                <p className="text-xs font-bold uppercase tracking-wider text-green-600">Já Regularizadas</p>
+                <p className="mt-1 text-2xl font-bold text-green-700">R$ 260,32</p>
+              </div>
+            </div>
+
+            <Card theme="light" noPadding>
+              <CardHeader className="border-b border-neutral-200 px-5 pt-5 pb-4">
+                <CardTitle>Histórico de Infrações</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-neutral-100 bg-neutral-50">
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Placa</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Data</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Infração</th>
+                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-neutral-500">Pontos</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-neutral-500">Valor</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {INFRACOES.map((inf, i) => (
+                      <tr key={i} className="hover:bg-neutral-50">
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center rounded bg-neutral-800 px-2 py-1 font-mono text-xs font-bold text-white">
+                            {inf.placa}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-neutral-600">{inf.data}</td>
+                        <td className="px-4 py-3 text-neutral-700">{inf.tipo}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                            inf.pontos >= 7 ? 'bg-red-100 text-red-700' :
+                            inf.pontos >= 4 ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-neutral-100 text-neutral-600'
+                          }`}>
+                            {inf.pontos}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-neutral-800">{inf.valor}</td>
+                        <td className="px-4 py-3">{infracaoStatusBadge(inf.status)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Tab 2 — Manutenção */}
+        {activeTab === 2 && (
+          <Card theme="light" noPadding>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
+              <CardTitle>Agenda de Manutenção</CardTitle>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Agendar Manutenção</Button>
             </CardHeader>
-            <CardContent className="divide-y divide-surface-border">
-              {fines.map(fine => (
-                <div key={fine.id} className="py-4 flex justify-between items-start">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase text-xs">{fine.driverName} — PLACA {fine.plate}</h4>
-                    <p className="text-xs text-fg3 font-mono">{fine.infraction}</p>
-                    <div className="flex gap-2 mt-1 text-[11px] font-mono text-fg3">
-                      <span>DATA INFRAÇÃO: {fine.date}</span>
-                      <span>|</span>
-                      <span>VALOR: {fine.amount} ({fine.points} Pontos)</span>
-                    </div>
-                  </div>
-                  <div>
-                    {fine.status === 'Pendente' ? (
-                      <Button size="sm" variant="danger" onClick={() => openRecognize(fine)}>
-                        ASSINAR RECONHECIMENTO →
-                      </Button>
-                    ) : (
-                      <Badge variant="success">RECONHECIDO E ASSINADO</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-100 bg-neutral-50">
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Placa</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Modelo</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Serviço</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Previsão</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Urgência</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {MANUTENCOES.map((m, i) => (
+                    <tr key={i} className="hover:bg-neutral-50">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center rounded bg-neutral-800 px-2 py-1 font-mono text-xs font-bold text-white">
+                          {m.placa}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-neutral-900">{m.modelo}</td>
+                      <td className="px-4 py-3 text-neutral-600">{m.tipo}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-neutral-600">{m.previsao}</td>
+                      <td className="px-4 py-3">{urgenciaBadge(m.urgencia)}</td>
+                      <td className="px-4 py-3">
+                        <Button variant="outline" size="sm" leftIcon={<Eye className="h-3 w-3" />}>Detalhes</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </CardContent>
           </Card>
-        )}
-
-        {/* CADASTRO DE VEÍCULO MODAL */}
-        {showVehicleForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-md bg-surface border border-surface-border p-6 shadow-dark">
-              <h3 className="text-lg font-display font-bold text-primary tracking-wider border-b border-surface-border pb-3 mb-4 uppercase">
-                CADASTRAR NOVO VEÍCULO NA FROTA
-              </h3>
-              
-              <form onSubmit={handleAddVehicle} className="space-y-4">
-                <Field
-                  label="PLACA"
-                  placeholder="Ex: VP-1234"
-                  value={formPlate}
-                  onChange={e => setFormPlate(e.target.value)}
-                />
-                <Field
-                  label="MARCA"
-                  placeholder="Ex: Fiat"
-                  value={formBrand}
-                  onChange={e => setFormBrand(e.target.value)}
-                />
-                <Field
-                  label="MODELO"
-                  placeholder="Ex: Fiorino"
-                  value={formModel}
-                  onChange={e => setFormModel(e.target.value)}
-                />
-
-                <div className="flex justify-end gap-3 border-t border-surface-border pt-4 mt-6">
-                  <Button type="button" variant="outline" onClick={() => setShowVehicleForm(false)}>
-                    CANCELAR
-                  </Button>
-                  <Button type="submit">
-                    CONFIRMAR CADASTRO →
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* REGISTRAR MULTA MODAL */}
-        {showFineForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-md bg-surface border border-surface-border p-6 shadow-dark">
-              <h3 className="text-lg font-display font-bold text-primary tracking-wider border-b border-surface-border pb-3 mb-4 uppercase">
-                REGISTRAR MULTA DE TRÂNSITO
-              </h3>
-              
-              <form onSubmit={handleAddFine} className="space-y-4">
-                <Field
-                  label="PLACA DO VEÍCULO"
-                  placeholder="Ex: VP-1234"
-                  value={formFinePlate}
-                  onChange={e => setFormFinePlate(e.target.value)}
-                />
-                <Field
-                  label="CONDUTOR (MOTORISTA)"
-                  placeholder="Ex: Carlos Oliveira"
-                  value={formFineDriver}
-                  onChange={e => setFormFineDriver(e.target.value)}
-                />
-                <Field
-                  label="DESCRIÇÃO DA INFRAÇÃO"
-                  placeholder="Ex: Excesso de velocidade"
-                  value={formFineDesc}
-                  onChange={e => setFormFineDesc(e.target.value)}
-                />
-                <Field
-                  label="VALOR DA MULTA"
-                  placeholder="R$ 130,16"
-                  value={formFineAmount}
-                  onChange={e => setFormFineAmount(e.target.value)}
-                />
-
-                <div className="flex justify-end gap-3 border-t border-surface-border pt-4 mt-6">
-                  <Button type="button" variant="outline" onClick={() => setShowFineForm(false)}>
-                    CANCELAR
-                  </Button>
-                  <Button type="submit">
-                    LANÇAR MULTA NO SISTEMA →
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* RECONHECIMENTO DE MULTA MODAL */}
-        {recognizeModal && activeFine && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-md bg-surface border border-surface-border p-6 shadow-dark">
-              <h3 className="text-lg font-display font-bold text-primary tracking-wider border-b border-surface-border pb-3 mb-4">
-                TERMO DE RECONHECIMENTO E AUTORIZAÇÃO DE DESCONTO
-              </h3>
-              
-              <div className="space-y-4 text-sm text-fg2">
-                <p>
-                  Eu, **{activeFine.driverName}**, reconheço ser o condutor do veículo placa **{activeFine.plate}** na data de **{activeFine.date}** e o único responsável pela infração de trânsito: **{activeFine.infraction}**.
-                </p>
-                <p>
-                  Autorizo expressamente a empresa VerticalParts a realizar o desconto do valor da referida multa (**{activeFine.amount}**) em minha folha de pagamento, conforme previsto no Art. 462, § 1º da CLT.
-                </p>
-                <div className="bg-surface-card p-3 border border-surface-border font-mono text-xs text-fg3 space-y-1">
-                  <p>IP: 189.120.33.4</p>
-                  <p>Validação da Assinatura: ICP-Brasil MP 2.200-2/2001</p>
-                  <p>Data: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 border-t border-surface-border pt-4 mt-6">
-                <Button variant="outline" onClick={() => { setRecognizeModal(false); setActiveFine(null) }}>
-                  RECORRER DA MULTA
-                </Button>
-                <Button onClick={handleConfirmRecognition}>
-                  RECONHECER E ASSINAR AUTORIZAÇÃO →
-                </Button>
-              </div>
-            </div>
-          </div>
         )}
 
       </div>

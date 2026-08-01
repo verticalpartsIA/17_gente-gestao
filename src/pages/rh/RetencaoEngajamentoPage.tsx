@@ -1,271 +1,276 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
-import { 
-  Smile, 
-  ThumbsUp, 
-  CheckCircle
+import {
+  Heart,
+  Users,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  TrendingUp,
+  Plus
 } from 'lucide-react'
 
-interface FeedbackItem {
-  id: string
-  from: string
-  to: string
-  badge: string
-  message: string
-  date: string
-}
+// ── Data from HTML prototype ──────────────────────────────────────────────────
 
-const INITIAL_FEEDBACKS: FeedbackItem[] = [
-  { id: 'fb-1', from: 'Carlos Oliveira (Supervisor)', to: 'Marcos Pontes (Auxiliar)', badge: 'Trabalho em Equipe', message: 'Marcos demonstrou muita proatividade e engajamento na manutenção preventiva da frota de empilhadeiras esta semana.', date: '04/06/2026' },
-  { id: 'fb-2', from: 'Mariana Nogueira (Analista)', to: 'Juliana Silva (Gestora)', badge: 'Foco em Resultados', message: 'Juliana deu um excelente suporte no onboarding dos novos admitidos do DP, garantindo que toda documentação entrasse limpa no sistema.', date: '02/06/2026' },
-  { id: 'fb-3', from: 'Arthur Souza (Engenharia)', to: 'José Costa (Montagem)', badge: 'Segurança e SSMA', message: 'José chamou a atenção sobre a conformidade no uso dos EPIs de altura na montagem do galpão, garantindo segurança total da equipe.', date: '30/05/2026' }
+const ENPS_EVOLUCAO = [
+  { mes: 'Jan', valor: 28 },
+  { mes: 'Fev', valor: 31 },
+  { mes: 'Mar', valor: 35 },
+  { mes: 'Abr', valor: 38 },
+  { mes: 'Mai', valor: 40 },
+  { mes: 'Jun', valor: 42 },
 ]
 
+const ENPS_COMENTARIOS = [
+  { autor: 'Colaborador Anônimo', texto: 'A empresa tem crescido muito e as oportunidades de desenvolvimento aumentaram bastante nos últimos meses.', tipo: 'positivo' },
+  { autor: 'Colaborador Anônimo', texto: 'Gostaria que houvesse mais flexibilidade de horários. O ambiente é ótimo, mas a rigidez nos horários é desafiadora.', tipo: 'neutro' },
+  { autor: 'Colaborador Anônimo', texto: 'A liderança direta é excelente, mas sinto falta de mais comunicação vinda da alta gestão sobre os rumos da empresa.', tipo: 'neutro' },
+  { autor: 'Colaborador Anônimo', texto: 'Minha remuneração está abaixo do mercado para a minha função. Isso me preocupa e está me fazendo avaliar outras oportunidades.', tipo: 'negativo' },
+]
+
+const CLIMA_DIMENSOES = [
+  { dimensao: 'Infraestrutura',        empresa: 88, mercado: 75 },
+  { dimensao: 'Liderança',             empresa: 87, mercado: 70 },
+  { dimensao: 'Cultura',               empresa: 82, mercado: 72 },
+  { dimensao: 'Equilíbrio Vida/Trab.', empresa: 78, mercado: 68 },
+  { dimensao: 'Crescimento',           empresa: 71, mercado: 65 },
+  { dimensao: 'Comunicação',           empresa: 74, mercado: 67 },
+  { dimensao: 'Remuneração',           empresa: 65, mercado: 60 },
+]
+
+const FEEDBACKS = [
+  { de: 'Carlos Mendes',   para: 'Ana Paula Rocha',  tipo: 'Positivo',    msg: 'Excelente liderança na apresentação para o cliente XYZ. Sua preparação e confiança foram fundamentais para fecharmos o contrato.' },
+  { de: 'Gelson Simões',   para: 'Mariana Costa',    tipo: 'Positivo',    msg: 'Parabéns pela entrega do projeto de consultoria dentro do prazo e com qualidade acima da esperada. Continue assim!' },
+  { de: 'Mariana Costa',   para: 'Felipe Santos',    tipo: 'Construtivo', msg: 'Para o próximo trimestre, sugiro que você foque em melhorar a comunicação proativa sobre os status das entregas de logística.' },
+  { de: 'Roberto Faria',   para: 'Beatriz Nunes',    tipo: 'Positivo',    msg: 'Sua adaptação ao sistema financeiro foi muito rápida. Obrigado pelo empenho nas primeiras semanas de trabalho.' },
+  { de: 'Ana Paula Rocha', para: 'Bruno Almeida',    tipo: 'Construtivo', msg: 'Você tem muito potencial! Minha sugestão é investir mais em prospecção ativa. Posso te ajudar a estruturar um funil de vendas.' },
+  { de: 'Felipe Santos',   para: 'João Figueiredo',  tipo: 'Positivo',    msg: 'Ótima integração na equipe de logística! Sua organização nas rotas de entrega já está gerando ganhos de tempo perceptíveis.' },
+]
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default function RetencaoEngajamentoPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tabParam = searchParams.get('tab') || 'clima'
-  const [activeTab, setActiveTab] = useState<string>(tabParam)
+  const [activeTab, setActiveTab] = useState(0)
 
-  useEffect(() => {
-    if (tabParam && tabParam !== activeTab) {
-      setActiveTab(tabParam)
-    }
-  }, [tabParam])
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
-    setSearchParams({ tab })
-  }
-
-  const feedbacks = INITIAL_FEEDBACKS
+  const TABS = ['eNPS', 'Pesquisa de Clima', 'Feedbacks 360°']
 
   return (
-    <AppShell navItems={NAV_ITEMS} pageTitle="RETENÇÃO & ENGAJAMENTO (CLIMA & ENPS)">
+    <AppShell navItems={NAV_ITEMS} pageTitle="RETENÇÃO E ENGAJAMENTO">
       <div className="space-y-6">
-        
-        {/* TABS CONTROLS */}
-        <div className="flex border-b border-surface-border bg-surface-card p-1 overflow-x-auto gap-1">
-          <button
-            onClick={() => handleTabChange('clima')}
-            className={`py-2 px-4 text-[11px] font-bold font-sans tracking-wider uppercase border-t-2 shrink-0 transition-all ${
-              activeTab === 'clima' 
-                ? 'border-t-primary bg-surface text-primary' 
-                : 'border-t-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            Pesquisas de Clima
-          </button>
-          <button
-            onClick={() => handleTabChange('enps')}
-            className={`py-2 px-4 text-[11px] font-bold font-sans tracking-wider uppercase border-t-2 shrink-0 transition-all ${
-              activeTab === 'enps' 
-                ? 'border-t-primary bg-surface text-primary' 
-                : 'border-t-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            Termômetro eNPS
-          </button>
-          <button
-            onClick={() => handleTabChange('feedbacks')}
-            className={`py-2 px-4 text-[11px] font-bold font-sans tracking-wider uppercase border-t-2 shrink-0 transition-all ${
-              activeTab === 'feedbacks' 
-                ? 'border-t-primary bg-surface text-primary' 
-                : 'border-t-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            Feedbacks Coletivos
-          </button>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <KpiCard icon={Heart}     color="brand"  label="ENPS"            value="42"  sub='Categoria "Bom" (≥ 40)' />
+          <KpiCard icon={Users}     color="blue"   label="RESPONDENTES"    value="20"  sub="De 22 colaboradores" />
+          <KpiCard icon={ThumbsUp}  color="green"  label="PROMOTORES"      value="11"  sub="Nota 9–10 na pesquisa" />
+          <KpiCard icon={ThumbsDown}color="red"    label="DETRATORES"      value="3"   sub="Nota 0–6 na pesquisa" />
         </div>
 
-        {/* --- TAB: CLIMA ORGANIZACIONAL --- */}
-        {activeTab === 'clima' && (
-          <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-              <KpiCard
-                icon={Smile}
-                color="brand"
-                label="ÍNDICE DE SATISFAÇÃO"
-                value="4.2 / 5.0"
-                sub="Média geral de engajamento"
-              />
-              <KpiCard
-                icon={ThumbsUp}
-                color="green"
-                label="TAXA DE RESPOSTA CLIMA"
-                value="85.4%"
-                sub="Forte engajamento nas pesquisas"
-              />
-              <KpiCard
-                icon={CheckCircle}
-                color="blue"
-                label="PESQUISAS CONCLUÍDAS"
-                value="4 Realizadas"
-                sub="Ciclo histórico anual"
-              />
-            </div>
+        {/* Tabs */}
+        <div className="flex border-b border-neutral-200">
+          {TABS.map((tab, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveTab(i)}
+              className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                activeTab === i
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between border-b border-surface-border pb-4">
-                <CardTitle>PESQUISAS DE CLIMA ORGANIZACIONAL</CardTitle>
-                <Button size="sm">CRIAR PESQUISA</Button>
+        {/* Tab 0 — eNPS */}
+        {activeTab === 0 && (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Score + barra */}
+            <Card theme="light" className="lg:col-span-1">
+              <CardHeader className="border-b border-neutral-200 pb-4">
+                <CardTitle>Score eNPS — Junho 2026</CardTitle>
               </CardHeader>
-              <CardContent className="divide-y divide-surface-border">
-                <div className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase text-xs">Pesquisa de Clima Semestral 2026 - 1º Ciclo</h4>
-                    <p className="text-[10px] text-fg3 font-mono mt-0.5">FINALIZA EM: 30/06/2026 | PARTICIPANTES: 121 RESPONDIDOS</p>
+              <CardContent>
+                <div className="flex flex-col items-center py-6">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary text-5xl font-black text-black">
+                    42
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="warning">EM ANDAMENTO</Badge>
-                    <Button size="sm" variant="outline">ACOMPANHAR</Button>
-                  </div>
+                  <p className="mt-3 text-sm font-bold text-neutral-700">Categoria: <span className="text-green-600">BOM</span></p>
+                  <p className="mt-1 text-xs text-neutral-500">Referência: acima de 40 = Bom</p>
                 </div>
 
-                <div className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase text-xs">Pesquisa Rápida: Home Office vs. Híbrido</h4>
-                    <p className="text-[10px] text-fg3 font-mono mt-0.5">FINALIZADA EM: 15/04/2026 | PARTICIPANTES: 142 RESPONDIDOS</p>
+                {/* Barra de distribuição */}
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="w-20 text-right font-bold text-green-600">11 Prom.</span>
+                    <div className="flex-1 h-4 rounded bg-neutral-100 overflow-hidden">
+                      <div className="h-full bg-green-500 rounded" style={{ width: '55%' }} />
+                    </div>
+                    <span className="text-neutral-500">55%</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="success">FINALIZADA</Badge>
-                    <Button size="sm" variant="outline">VER RESULTADOS</Button>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="w-20 text-right font-bold text-neutral-500">6 Neutros</span>
+                    <div className="flex-1 h-4 rounded bg-neutral-100 overflow-hidden">
+                      <div className="h-full bg-neutral-300 rounded" style={{ width: '30%' }} />
+                    </div>
+                    <span className="text-neutral-500">30%</span>
                   </div>
-                </div>
-
-                <div className="py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase text-xs">Diagnóstico de Integração de Novos Colaboradores</h4>
-                    <p className="text-[10px] text-fg3 font-mono mt-0.5">MÉTRICA CONTÍNUA | AVALIAÇÃO COM 30 DIAS DE CASA</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="collaborator">RECORRENTE</Badge>
-                    <Button size="sm" variant="outline">CONFIGURAR</Button>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="w-20 text-right font-bold text-red-600">3 Detr.</span>
+                    <div className="flex-1 h-4 rounded bg-neutral-100 overflow-hidden">
+                      <div className="h-full bg-red-500 rounded" style={{ width: '15%' }} />
+                    </div>
+                    <span className="text-neutral-500">15%</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </>
-        )}
 
-        {/* --- TAB: TERMÔMETRO ENPS --- */}
-        {activeTab === 'enps' && (
-          <>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Card className="lg:col-span-1 bg-surface-card border border-surface-border text-center py-8 flex flex-col justify-center items-center">
-                <p className="text-xs font-mono font-bold text-fg3 uppercase tracking-wider">SCORE ENPS DO TIMECORPORATIVO</p>
-                <p className="text-7xl font-display font-black text-primary my-4 font-sans">+62</p>
-                <Badge variant="success">ZONA DE QUALIDADE</Badge>
-                <p className="text-[10px] text-fg3 font-mono mt-4">Último cálculo em: 01/06/2026</p>
-              </Card>
-
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>SEGMENTAÇÃO DE PROMOTORES & DETRATORES</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-4">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono font-bold text-success">
-                      <span>PROMOTORES (Nota 9 e 10)</span>
-                      <span>70.0% (99 Colaboradores)</span>
-                    </div>
-                    <div className="bg-surface-elevated h-3 border border-surface-border">
-                      <div className="bg-green-600 h-full" style={{ width: '70%' }}></div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono font-bold text-fg2">
-                      <span>NEUTROS (Nota 7 e 8)</span>
-                      <span>22.0% (31 Colaboradores)</span>
-                    </div>
-                    <div className="bg-surface-elevated h-3 border border-surface-border">
-                      <div className="bg-slate-500 h-full" style={{ width: '22%' }}></div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono font-bold text-danger">
-                      <span>DETRATORES (Nota 0 a 6)</span>
-                      <span>8.0% (12 Colaboradores)</span>
-                    </div>
-                    <div className="bg-surface-elevated h-3 border border-surface-border">
-                      <div className="bg-red/80 h-full" style={{ width: '8%' }}></div>
-                    </div>
-                  </div>
-
-                  <div className="p-3 border border-surface-border bg-surface-card font-sans text-xs text-fg2 mt-4">
-                    <p className="font-bold text-fg-on-dark mb-1">Métricas Gerais de Retenção:</p>
-                    <p>O score eNPS de **+62** aponta um alto grau de satisfação e engajamento da equipe VerticalParts com os processos internos. A maior parte das reclamações nos detratores diz respeito a tempo de espera no reembolso de despesas da frota, já em fase de automação.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
-
-        {/* --- TAB: FEEDBACKS COLETIVOS --- */}
-        {activeTab === 'feedbacks' && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-surface-border pb-4">
-                <CardTitle>MURAL DE RECONHECIMENTOS & FEEDBACKS</CardTitle>
-                <Button size="sm">ENVIAR ELOGIO</Button>
+            {/* Evolução */}
+            <Card theme="light" className="lg:col-span-2">
+              <CardHeader className="border-b border-neutral-200 pb-4">
+                <CardTitle>Evolução do eNPS — Jan a Jun 2026</CardTitle>
               </CardHeader>
-              <CardContent className="divide-y divide-surface-border font-sans">
-                {feedbacks.map(fb => (
-                  <div key={fb.id} className="py-4 space-y-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="admin">{fb.badge.toUpperCase()}</Badge>
-                        <span className="text-fg3 font-mono text-[10px]">{fb.date}</span>
-                      </div>
+              <CardContent>
+                {/* Bar chart */}
+                <div className="flex items-end gap-3 h-40 mt-4">
+                  {ENPS_EVOLUCAO.map((item) => (
+                    <div key={item.mes} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-xs font-bold text-neutral-700">{item.valor}</span>
+                      <div
+                        className="w-full rounded-t bg-primary opacity-80 transition-all"
+                        style={{ height: `${(item.valor / 50) * 100}%` }}
+                      />
+                      <span className="text-[11px] text-neutral-500">{item.mes}</span>
                     </div>
-                    <p className="text-xs text-fg2 italic">"{fb.message}"</p>
-                    <p className="text-[10px] text-fg3 font-mono">
-                      DE: <span className="font-bold text-fg-on-dark uppercase">{fb.from}</span> → PARA: <span className="font-bold text-fg-on-dark uppercase">{fb.to}</span>
-                    </p>
+                  ))}
+                </div>
+                <p className="mt-4 text-center text-xs text-neutral-400">
+                  Crescimento de +14 pontos no semestre (+50%)
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Comentários */}
+            <Card theme="light" noPadding className="lg:col-span-3">
+              <CardHeader className="border-b border-neutral-200 px-5 pt-5 pb-4">
+                <CardTitle>Comentários Anônimos da Pesquisa</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-neutral-100 px-5">
+                {ENPS_COMENTARIOS.map((c, i) => (
+                  <div key={i} className="py-4 flex gap-4">
+                    <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
+                      c.tipo === 'positivo' ? 'bg-green-100 text-green-600' :
+                      c.tipo === 'negativo' ? 'bg-red-100 text-red-600' :
+                      'bg-neutral-100 text-neutral-500'
+                    }`}>
+                      {c.tipo === 'positivo' ? '↑' : c.tipo === 'negativo' ? '↓' : '–'}
+                    </span>
+                    <div>
+                      <p className="text-sm text-neutral-700 italic">"{c.texto}"</p>
+                      <p className="mt-1 text-xs text-neutral-400">{c.autor}</p>
+                    </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Badges da VerticalParts</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-xs">
-                <div className="p-3 border border-surface-border bg-surface-card flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">🤝</div>
-                  <div>
-                    <h5 className="font-bold text-fg-on-dark">TRABALHO EM EQUIPE</h5>
-                    <p className="text-[10px] text-fg3">Por ajudar os colegas e compartilhar conhecimento.</p>
-                  </div>
-                </div>
-
-                <div className="p-3 border border-surface-border bg-surface-card flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">🎯</div>
-                  <div>
-                    <h5 className="font-bold text-fg-on-dark">FOCO EM RESULTADOS</h5>
-                    <p className="text-[10px] text-fg3">Por atingir metas e otimizar processos de forma excelente.</p>
-                  </div>
-                </div>
-
-                <div className="p-3 border border-surface-border bg-surface-card flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">🛡️</div>
-                  <div>
-                    <h5 className="font-bold text-fg-on-dark">SEGURANÇA E SSMA</h5>
-                    <p className="text-[10px] text-fg3">Por zelar pelas normas regulamentadoras e EPIs.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
+        )}
+
+        {/* Tab 1 — Pesquisa de Clima */}
+        {activeTab === 1 && (
+          <Card theme="light">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 pb-4">
+              <div>
+                <CardTitle>Pesquisa de Clima Organizacional</CardTitle>
+                <p className="mt-1 text-xs text-neutral-500">Resultados de Junho 2026 — 20 de 22 respondentes</p>
+              </div>
+              <Badge variant="info">Ciclo Jun/2026</Badge>
+            </CardHeader>
+            <CardContent className="space-y-5 pt-6">
+              {CLIMA_DIMENSOES.map((d, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-neutral-800">{d.dimensao}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs text-neutral-500">Mercado: <strong>{d.mercado}%</strong></span>
+                      <span className={`font-bold ${d.empresa >= 80 ? 'text-green-600' : d.empresa >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        Empresa: {d.empresa}%
+                      </span>
+                    </div>
+                  </div>
+                  {/* Empresa bar */}
+                  <div className="relative h-4 w-full rounded bg-neutral-100 overflow-hidden">
+                    {/* Mercado marker */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-neutral-400 z-10"
+                      style={{ left: `${d.mercado}%` }}
+                    />
+                    <div
+                      className={`h-full rounded transition-all ${
+                        d.empresa >= 80 ? 'bg-green-500' :
+                        d.empresa >= 70 ? 'bg-yellow-400' :
+                        'bg-red-400'
+                      }`}
+                      style={{ width: `${d.empresa}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-neutral-400">
+                    {d.empresa > d.mercado
+                      ? `+${d.empresa - d.mercado}p acima do mercado`
+                      : d.empresa === d.mercado
+                      ? 'Na média do mercado'
+                      : `${d.mercado - d.empresa}p abaixo do mercado`}
+                  </p>
+                </div>
+              ))}
+              <div className="pt-2 flex items-center gap-4 text-xs text-neutral-500 border-t border-neutral-100">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded bg-neutral-400" /> Linha do mercado (benchmark)
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded bg-green-500" /> ≥ 80% — Excelente
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded bg-yellow-400" /> 70–79% — Bom
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-3 w-3 rounded bg-red-400" /> &lt; 70% — Atenção
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tab 2 — Feedbacks 360° */}
+        {activeTab === 2 && (
+          <Card theme="light" noPadding>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
+              <CardTitle>Feedbacks 360° — Registros Recentes</CardTitle>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Novo Feedback</Button>
+            </CardHeader>
+            <CardContent className="divide-y divide-neutral-100 px-5">
+              {FEEDBACKS.map((fb, i) => (
+                <div key={i} className="py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-neutral-900">{fb.de}</span>
+                      <span className="text-neutral-400">→</span>
+                      <span className="font-semibold text-neutral-900">{fb.para}</span>
+                    </div>
+                    <Badge variant={fb.tipo === 'Positivo' ? 'success' : 'warning'}>{fb.tipo}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-neutral-600 italic">"{fb.msg}"</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
       </div>
