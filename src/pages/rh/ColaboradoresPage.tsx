@@ -5,25 +5,28 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Field } from '@/components/auth/Field'
-import { Level, Department } from '@/lib/auth'
-import { 
-  Search, 
-  Filter, 
-  UserPlus, 
-  Upload, 
+import { Level } from '@/lib/auth'
+import {
+  Search,
+  Filter,
+  UserPlus,
+  Upload,
   CheckCircle,
   X,
   Briefcase
 } from 'lucide-react'
 
+type Dept = 'Diretoria' | 'Logística' | 'Almoxarifado/PCP' | 'Produção' | 'Consultoria Técnica' | 'Inst. e Montagem' | 'Projetos/TI' | 'Operações'
+
 interface Employee {
   id: string
   name: string
+  role: string
   email: string
   cpf: string
   level: Level
-  department: Department
-  employmentType: 'CLT' | 'PJ' | 'Terceiro'
+  department: Dept
+  employmentType: 'CLT' | 'PJ' | 'Terceiro' | 'Aprendiz'
   admissionDate: string
   salary: string
   status: 'Ativo' | 'Inativo'
@@ -31,58 +34,27 @@ interface Employee {
 }
 
 const INITIAL_EMPLOYEES: Employee[] = [
-  {
-    id: 'usr-admin',
-    name: 'Juliana Silva',
-    email: 'rh@verticalparts.com.br',
-    cpf: '123.456.789-00',
-    level: 'Administrador',
-    department: 'Financeiro',
-    employmentType: 'CLT',
-    admissionDate: '2022-03-15',
-    salary: 'R$ 8.500,00',
-    status: 'Ativo',
-    docs: { rg: true, cpf: true, cnh: false, proof: true }
-  },
-  {
-    id: 'usr-lider',
-    name: 'Karla Souza',
-    email: 'lider@verticalparts.com.br',
-    cpf: '987.654.321-11',
-    level: 'Lider',
-    department: 'Engenharia',
-    employmentType: 'CLT',
-    admissionDate: '2023-07-22',
-    salary: 'R$ 10.200,00',
-    status: 'Ativo',
-    docs: { rg: true, cpf: true, cnh: true, proof: true }
-  },
-  {
-    id: 'usr-colab',
-    name: 'Carlos Oliveira',
-    email: 'colaborador@verticalparts.com.br',
-    cpf: '456.789.123-22',
-    level: 'Colaborador',
-    department: 'Logistica',
-    employmentType: 'CLT',
-    admissionDate: '2024-01-10',
-    salary: 'R$ 3.800,00',
-    status: 'Ativo',
-    docs: { rg: true, cpf: true, cnh: true, proof: false }
-  },
-  {
-    id: 'usr-pj1',
-    name: 'Roberto Santos S/A',
-    email: 'roberto@devparts.com.br',
-    cpf: '12.345.678/0001-99',
-    level: 'Colaborador',
-    department: 'Engenharia',
-    employmentType: 'PJ',
-    admissionDate: '2025-05-01',
-    salary: 'R$ 15.000,00',
-    status: 'Ativo',
-    docs: { rg: false, cpf: true, cnh: false, proof: true }
-  }
+  { id: 'dm',  name: 'Diego Maeno',       role: 'CEO',                                  email: 'diego@verticalparts.com.br',     cpf: '—', level: 'Administrador', department: 'Diretoria',          employmentType: 'CLT',     admissionDate: '2015-01-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'do',  name: 'Danilo Oliveira',   role: 'Sup. de Logística',                    email: 'danilo@verticalparts.com.br',    cpf: '—', level: 'Lider',          department: 'Logística',          employmentType: 'CLT',     admissionDate: '2018-03-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'ac',  name: 'Aurélio Carvalho',  role: 'Técnico de Campo Sênior',              email: 'aurelio@verticalparts.com.br',   cpf: '—', level: 'Colaborador',    department: 'Logística',          employmentType: 'CLT',     admissionDate: '2019-06-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'jc',  name: 'Juciê Santos',      role: 'Aux. de Produção',                     email: 'jucie@verticalparts.com.br',     cpf: '—', level: 'Colaborador',    department: 'Produção',           employmentType: 'CLT',     admissionDate: '2021-02-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'gs',  name: 'Gustavo da Silva',  role: 'Aux. de Produção',                     email: 'gustavo@verticalparts.com.br',   cpf: '—', level: 'Colaborador',    department: 'Produção',           employmentType: 'CLT',     admissionDate: '2022-05-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'mn',  name: 'Marco Antonio',     role: 'Ajudante Geral',                       email: 'marco@verticalparts.com.br',     cpf: '—', level: 'Colaborador',    department: 'Logística',          employmentType: 'CLT',     admissionDate: '2022-08-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'fc',  name: 'Franklin Costa',    role: 'Analista Almoxarifado',                email: 'franklin@verticalparts.com.br',  cpf: '—', level: 'Lider',          department: 'Almoxarifado/PCP',   employmentType: 'CLT',     admissionDate: '2019-01-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'ta',  name: 'Tiago Acacio',      role: 'Assist. Almoxarifado',                 email: 'tiago@verticalparts.com.br',     cpf: '—', level: 'Colaborador',    department: 'Almoxarifado/PCP',   employmentType: 'CLT',     admissionDate: '2023-03-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'mr',  name: 'Matheus Rocha',     role: 'Assist. Expedição',                    email: 'matheus@verticalparts.com.br',   cpf: '—', level: 'Colaborador',    department: 'Logística',          employmentType: 'CLT',     admissionDate: '2023-07-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'mt',  name: 'Magda Torres',      role: 'Assist. PCP',                          email: 'magda@verticalparts.com.br',     cpf: '—', level: 'Lider',          department: 'Almoxarifado/PCP',   employmentType: 'CLT',     admissionDate: '2020-04-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'nc',  name: 'Nailson Cruz',      role: 'Serralheiro',                          email: 'nailson@verticalparts.com.br',   cpf: '—', level: 'Colaborador',    department: 'Produção',           employmentType: 'CLT',     admissionDate: '2021-09-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'ej',  name: 'Edmilson Jesus',    role: 'Motorista',                            email: 'edmilson@verticalparts.com.br',  cpf: '—', level: 'Colaborador',    department: 'Logística',          employmentType: 'CLT',     admissionDate: '2022-01-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'ge',  name: 'Gelson Simões',     role: 'Consultor Técnico Estratégico',        email: 'gelson@verticalparts.com.br',    cpf: '—', level: 'Lider',          department: 'Consultoria Técnica', employmentType: 'CLT',    admissionDate: '2017-06-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'gb',  name: 'Gesse Batista',     role: 'Motorista',                            email: 'gesse@verticalparts.com.br',     cpf: '—', level: 'Colaborador',    department: 'Logística',          employmentType: 'CLT',     admissionDate: '2023-11-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'ma',  name: 'Mauricio Araujo',   role: 'Supervisor de Inst. e Montagem',       email: 'mauricio@verticalparts.com.br',  cpf: '—', level: 'Lider',          department: 'Inst. e Montagem',   employmentType: 'CLT',     admissionDate: '2018-09-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'se',  name: 'Silvio Elias',      role: 'Tec. de Instalação e Manut. Sênior',  email: 'silvio@verticalparts.com.br',    cpf: '—', level: 'Colaborador',    department: 'Inst. e Montagem',   employmentType: 'CLT',     admissionDate: '2019-11-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'vl',  name: 'Vinicius Leite',    role: 'Analista de Projetos - BST Monarch',  email: 'vinicius@verticalparts.com.br',  cpf: '—', level: 'Lider',          department: 'Projetos/TI',        employmentType: 'CLT',     admissionDate: '2022-10-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
+  { id: 'fb',  name: 'Felipe Barros',     role: 'Jovem Aprendiz',                       email: 'felipe@verticalparts.com.br',    cpf: '—', level: 'Colaborador',    department: 'Projetos/TI',        employmentType: 'Aprendiz', admissionDate: '2025-02-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: false } },
+  { id: 'aa',  name: 'Arilene Avila',     role: 'Gestora de Operações',                 email: 'arilene@verticalparts.com.br',   cpf: '—', level: 'Lider',          department: 'Operações',          employmentType: 'CLT',     admissionDate: '2020-07-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'as',  name: 'Alexandre Schmidt', role: 'Engenheiro',                           email: 'alexandre@verticalparts.com.br', cpf: '—', level: 'Colaborador',    department: 'Operações',          employmentType: 'CLT',     admissionDate: '2023-05-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: true,  proof: true  } },
+  { id: 'bs',  name: 'Brayan Souza',      role: 'Tec. Mecatrônico',                     email: 'brayan@verticalparts.com.br',    cpf: '—', level: 'Colaborador',    department: 'Operações',          employmentType: 'CLT',     admissionDate: '2024-03-01', salary: 'Confidencial', status: 'Ativo', docs: { rg: true,  cpf: true,  cnh: false, proof: true  } },
 ]
 
 export default function ColaboradoresPage() {
@@ -97,8 +69,8 @@ export default function ColaboradoresPage() {
   const [formEmail, setFormEmail] = useState('')
   const [formCpf, setFormCpf] = useState('')
   const [formLevel, setFormLevel] = useState<Level>('Colaborador')
-  const [formDept, setFormDept] = useState<Department>('Logistica')
-  const [formType, setFormType] = useState<'CLT' | 'PJ' | 'Terceiro'>('CLT')
+  const [formDept, setFormDept] = useState<Dept>('Logística')
+  const [formType, setFormType] = useState<'CLT' | 'PJ' | 'Terceiro' | 'Aprendiz'>('CLT')
   const [formAdmission, setFormAdmission] = useState('')
   const [formSalary, setFormSalary] = useState('')
 
@@ -120,8 +92,9 @@ export default function ColaboradoresPage() {
     const newEmployee: Employee = {
       id: 'usr-' + Math.random().toString(36).substring(2),
       name: formName,
+      role: '',
       email: formEmail || `${formName.toLowerCase().replace(/\s+/g, '')}@verticalparts.com.br`,
-      cpf: formCpf,
+      cpf: formCpf || '—',
       level: formLevel,
       department: formDept,
       employmentType: formType,
@@ -141,7 +114,7 @@ export default function ColaboradoresPage() {
     setFormEmail('')
     setFormCpf('')
     setFormLevel('Colaborador')
-    setFormDept('Logistica')
+    setFormDept('Logística')
     setFormType('CLT')
     setFormAdmission('')
     setFormSalary('')
@@ -187,6 +160,7 @@ export default function ColaboradoresPage() {
                 <option value="CLT">CLT</option>
                 <option value="PJ">PJ</option>
                 <option value="Terceiro">TERCEIRO</option>
+                <option value="Aprendiz">APRENDIZ</option>
               </select>
             </div>
 
@@ -196,12 +170,14 @@ export default function ColaboradoresPage() {
               onChange={e => setFilterDept(e.target.value)}
             >
               <option value="Todos">DEPARTAMENTO: TODOS</option>
-              <option value="Compras">COMPRAS</option>
-              <option value="Engenharia">ENGENHARIA</option>
-              <option value="Financeiro">FINANCEIRO</option>
-              <option value="Logistica">LOGÍSTICA</option>
-              <option value="MKT">MKT</option>
-              <option value="Vendas">VENDAS</option>
+              <option value="Diretoria">DIRETORIA</option>
+              <option value="Logística">LOGÍSTICA</option>
+              <option value="Almoxarifado/PCP">ALMOXARIFADO / PCP</option>
+              <option value="Produção">PRODUÇÃO</option>
+              <option value="Consultoria Técnica">CONSULTORIA TÉCNICA</option>
+              <option value="Inst. e Montagem">INST. E MONTAGEM</option>
+              <option value="Projetos/TI">PROJETOS / TI</option>
+              <option value="Operações">OPERAÇÕES</option>
             </select>
 
             <Button onClick={() => setShowForm(true)} rightIcon={<UserPlus className="h-4 w-4" />}>
@@ -251,21 +227,24 @@ export default function ColaboradoresPage() {
                       <option value="CLT">CLT (CONTRATO CLT)</option>
                       <option value="PJ">PJ (PRESTAÇÃO DE SERVIÇOS)</option>
                       <option value="Terceiro">TERCEIRO</option>
+                      <option value="Aprendiz">JOVEM APRENDIZ</option>
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold font-sans text-fg-on-dark tracking-wider block">DEPARTAMENTO</label>
                     <select
                       className="w-full bg-surface-card border border-surface-border p-2.5 text-sm font-sans text-fg-on-dark focus:outline-none focus:border-primary"
-                      value={formDept || 'Logistica'}
-                      onChange={e => setFormDept(e.target.value as any)}
+                      value={formDept || 'Logística'}
+                      onChange={e => setFormDept(e.target.value as Dept)}
                     >
-                      <option value="Compras">COMPRAS</option>
-                      <option value="Engenharia">ENGENHARIA</option>
-                      <option value="Financeiro">FINANCEIRO</option>
-                      <option value="Logistica">LOGÍSTICA</option>
-                      <option value="MKT">MKT</option>
-                      <option value="Vendas">VENDAS</option>
+                      <option value="Diretoria">DIRETORIA</option>
+                      <option value="Logística">LOGÍSTICA</option>
+                      <option value="Almoxarifado/PCP">ALMOXARIFADO / PCP</option>
+                      <option value="Produção">PRODUÇÃO</option>
+                      <option value="Consultoria Técnica">CONSULTORIA TÉCNICA</option>
+                      <option value="Inst. e Montagem">INST. E MONTAGEM</option>
+                      <option value="Projetos/TI">PROJETOS / TI</option>
+                      <option value="Operações">OPERAÇÕES</option>
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -374,6 +353,7 @@ export default function ColaboradoresPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-fg-on-dark tracking-wide uppercase">{emp.name}</h4>
+                      <p className="text-xs text-neutral-500 font-sans">{emp.role}</p>
                       <p className="text-xs text-fg3 font-mono">{emp.email}</p>
                       <div className="flex flex-wrap gap-2 mt-1 items-center">
                         <Badge variant="collaborator">{emp.employmentType}</Badge>
