@@ -13,7 +13,6 @@ import {
   FileText, 
   CheckCircle, 
   ArrowRight,
-  ClipboardCheck,
   Zap,
   HelpCircle,
   HeartHandshake,
@@ -26,13 +25,14 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { useAuth } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Link } from 'react-router-dom'
 
 export const NAV_ITEMS = [
@@ -139,9 +139,48 @@ export const NAV_ITEMS = [
   { label: 'SUPORTE', href: '/suporte', icon: HelpCircle }
 ]
 
+// Card vazio honesto para métricas sem tabela real ainda — em vez de inventar
+// um número, deixa explícito que o módulo não está integrado.
+function EmptyMetric({ text }: { text: string }) {
+  return (
+    <div className="p-4 border border-dashed border-surface-border bg-surface-card/10 text-center rounded-md">
+      <p className="text-xs text-slate-400 font-sans italic">{text}</p>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { profile } = useAuth()
   const userRole = profile?.level || 'Colaborador'
+
+  const [activeCount, setActiveCount] = useState<number | null>(null)
+  const [directReports, setDirectReports] = useState<number | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      const { count } = await (supabase as any)
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+      setActiveCount(count ?? 0)
+
+      if (profile?.id) {
+        const { count: reports } = await (supabase as any)
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('manager_id', profile.id)
+          .eq('is_active', true)
+        setDirectReports(reports ?? 0)
+      }
+    }
+    load()
+  }, [profile?.id])
+
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle={`PAINEL GERAL — ${profile?.name || 'CONVIDADO'}`}>
@@ -157,29 +196,29 @@ export default function DashboardPage() {
                 icon={Users}
                 color="brand"
                 label="TOTAL ATIVOS"
-                value="142"
-                sub="+3 admitidos este mês"
+                value={activeCount === null ? '...' : String(activeCount)}
+                sub="Colaboradores ativos (dado real)"
               />
               <KpiCard
                 icon={ShieldAlert}
                 color="red"
                 label="ASO EXPIRANDO"
-                value="3"
-                sub="Vencem nos próximos 30 dias"
+                value="—"
+                sub="Módulo SST ainda não integrado"
               />
               <KpiCard
                 icon={AlertTriangle}
                 color="purple"
                 label="MULTAS PENDENTES"
-                value="5"
-                sub="Aguardando condutor"
+                value="—"
+                sub="Módulo Frota ainda não integrado"
               />
               <KpiCard
                 icon={Clock}
                 color="green"
                 label="BANCO DE HORAS"
-                value="1.420h"
-                sub="Saldo total acumulado"
+                value="—"
+                sub="Módulo Ponto ainda não integrado"
               />
             </div>
 
@@ -191,46 +230,7 @@ export default function DashboardPage() {
                   <CardTitle>ALERTAS E PENDÊNCIAS DO DEPARTAMENTO</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center bg-red/10 text-danger">
-                          <ShieldAlert className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">ASO VENCIDO: JOSÉ COSTA</p>
-                          <p className="text-xs text-fg3 font-mono">NR-35 — TRABALHO EM ALTURA</p>
-                        </div>
-                      </div>
-                      <Badge variant="danger">URGENTE</Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center bg-brand/10 text-primary">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">REQUISIÇÃO DE ADMISSÃO APROVADA</p>
-                          <p className="text-xs text-fg3 font-mono">CARGO: ANALISTA DE ENGENHARIA PLENO</p>
-                        </div>
-                      </div>
-                      <Badge variant="warning">PENDENTE DOCS</Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center bg-purple/10 text-purple-600">
-                          <Car className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">NOVA MULTA REGISTRADA — PLACA VP-8980</p>
-                          <p className="text-xs text-fg3 font-mono">INFRAÇÃO: EXCESSO DE VELOCIDADE</p>
-                        </div>
-                      </div>
-                      <Badge variant="admin">ANALISAR FROTA</Badge>
-                    </div>
-                  </div>
+                  <EmptyMetric text="Nenhum alerta registrado — os módulos de SST, Admissão e Frota ainda não estão integrados ao banco de dados." />
                 </CardContent>
               </Card>
 
@@ -315,66 +315,7 @@ export default function DashboardPage() {
                   <CardTitle>ACOMPANHE OS SEUS DADOS DE PROFILER</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="p-3 border border-surface-border bg-surface-card rounded-md text-center">
-                        <span className="block text-xl font-bold font-mono text-primary">832.8 Dias</span>
-                        <span className="text-[10px] text-fg3 font-bold font-sans uppercase">Tempo Médio de Permanência</span>
-                      </div>
-                      <div className="p-2.5 border border-surface-border bg-surface-card rounded-md">
-                        <p className="text-[10px] text-fg3 font-bold uppercase tracking-wider font-mono">Perfil Predominante:</p>
-                        <span className="text-lg font-bold font-mono text-primary">PEC</span>
-                        <p className="text-[9px] text-fg2 font-sans mt-0.5 leading-relaxed">
-                          Planejador, Executor, Comunicador. Resultados, diretos e estáveis.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[10px] text-fg3 font-bold uppercase tracking-wider font-mono mb-1">Distribuição Comportamental:</p>
-                      
-                      <div className="space-y-1 text-[10px] font-sans">
-                        <div className="flex justify-between font-mono">
-                          <span>Executor</span>
-                          <span className="font-bold text-fg-on-dark">25.69%</span>
-                        </div>
-                        <div className="bg-surface-elevated h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-primary h-full" style={{ width: '25.69%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-[10px] font-sans">
-                        <div className="flex justify-between font-mono">
-                          <span>Comunicador</span>
-                          <span className="font-bold text-fg-on-dark">25.35%</span>
-                        </div>
-                        <div className="bg-surface-elevated h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-blue-400 h-full" style={{ width: '25.35%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-[10px] font-sans">
-                        <div className="flex justify-between font-mono">
-                          <span>Planejador</span>
-                          <span className="font-bold text-fg-on-dark">26.45%</span>
-                        </div>
-                        <div className="bg-surface-elevated h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-green-500 h-full" style={{ width: '26.45%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-[10px] font-sans">
-                        <div className="flex justify-between font-mono">
-                          <span>Analista</span>
-                          <span className="font-bold text-fg-on-dark">22.51%</span>
-                        </div>
-                        <div className="bg-surface-elevated h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-purple-500 h-full" style={{ width: '22.51%' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
+                  <EmptyMetric text="Nenhum resultado de Profiler cadastrado ainda — este módulo ainda não está integrado ao banco de dados." />
                   <div className="pt-2">
                     <Link to="/profiler">
                       <Button size="sm" className="w-full" variant="outline">VER PROFILER DA EMPRESA</Button>
@@ -435,14 +376,16 @@ export default function DashboardPage() {
                       <p className="text-[9px] text-slate-500 font-mono mt-0.5">Últimos 6 meses</p>
                     </div>
                     <div className="p-3 border border-surface-border bg-surface-card rounded-md">
-                      <span className="block text-xl font-bold font-mono text-primary">47.00</span>
+                      <span className="block text-xl font-bold font-mono text-primary">
+                        {activeCount === null ? '...' : activeCount}
+                      </span>
                       <span className="text-[10px] text-fg3 font-bold font-sans uppercase">Sem PDI Ativo</span>
                       <p className="text-[9px] text-slate-500 font-mono mt-0.5">Colaboradores</p>
                     </div>
                     <div className="p-3 border border-surface-border bg-surface-card rounded-md">
-                      <span className="block text-xl font-bold font-mono text-primary">100%</span>
+                      <span className="block text-xl font-bold font-mono text-primary">—</span>
                       <span className="text-[10px] text-fg3 font-bold font-sans uppercase">Metas Atingidas</span>
-                      <p className="text-[9px] text-slate-500 font-mono mt-0.5">Últimos 6 meses</p>
+                      <p className="text-[9px] text-slate-500 font-mono mt-0.5">Módulo ainda não integrado</p>
                     </div>
                   </div>
 
@@ -549,21 +492,7 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <div className="flex items-center justify-between bg-surface-card p-3 border border-surface-border rounded-md">
-                    <Button size="sm" variant="ghost" className="p-1 min-w-0" disabled>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="text-center">
-                      <span className="inline-block text-[10px] font-bold font-mono bg-brand/10 text-primary px-2.5 py-0.5 rounded-full mb-1">
-                        23/05
-                      </span>
-                      <h4 className="font-bold text-fg-on-dark uppercase text-xs">JOVANNA REGINA DOS SANTOS MELLO</h4>
-                      <p className="text-[10px] text-fg3 font-mono mt-0.5">Analista Financeiro Jr • Financeiro</p>
-                    </div>
-                    <Button size="sm" variant="ghost" className="p-1 min-w-0">
-                      <ChevronRight className="h-4 w-4 text-primary" />
-                    </Button>
-                  </div>
+                  <EmptyMetric text="Nenhum aniversariante cadastrado — o campo de data de nascimento ainda não existe em Colaboradores." />
                 </CardContent>
               </Card>
 
@@ -606,22 +535,22 @@ export default function DashboardPage() {
                 icon={Users}
                 color="brand"
                 label="LIDERADOS DIRETOS"
-                value="18"
-                sub="Departamento: Engenharia"
+                value={directReports === null ? '...' : String(directReports)}
+                sub={profile?.department || 'Dado real de manager_id'}
               />
               <KpiCard
                 icon={Award}
                 color="purple"
                 label="AVALIAÇÕES PENDENTES"
-                value="2"
-                sub="Ciclo: Experiência 45/90 dias"
+                value="—"
+                sub="Módulo Desempenho ainda não integrado"
               />
               <KpiCard
                 icon={Calendar}
                 color="green"
                 label="SOLICITAÇÕES FÉRIAS"
-                value="1"
-                sub="Aguardando aprovação"
+                value="—"
+                sub="Módulo Benefícios ainda não integrado"
               />
             </div>
 
@@ -631,27 +560,7 @@ export default function DashboardPage() {
                   <CardTitle>AVALIAÇÕES PENDENTES DA SUA EQUIPE</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                      <div>
-                        <p className="font-semibold text-sm">MARCOS PONTES — AUXILIAR DE MONTAGEM</p>
-                        <p className="text-xs text-fg3 font-mono">AVALIAÇÃO DE 45 DIAS — VENCE EM 3 DIAS</p>
-                      </div>
-                      <Link to="/desempenho">
-                        <Button size="sm">AVALIAR →</Button>
-                      </Link>
-                    </div>
-
-                    <div className="flex items-center justify-between pb-3">
-                      <div>
-                        <p className="font-semibold text-sm">SABRINA ALMEIDA — PROJETISTA ENGENHARIA</p>
-                        <p className="text-xs text-fg3 font-mono">AVALIAÇÃO DE 90 DIAS (EFETIVAÇÃO) — VENCE EM 7 DIAS</p>
-                      </div>
-                      <Link to="/desempenho">
-                        <Button size="sm">AVALIAR →</Button>
-                      </Link>
-                    </div>
-                  </div>
+                  <EmptyMetric text="Nenhuma avaliação pendente registrada — o módulo de Desempenho ainda não está integrado ao banco de dados." />
                 </CardContent>
               </Card>
 
@@ -680,22 +589,22 @@ export default function DashboardPage() {
                 icon={Clock}
                 color="green"
                 label="BANCO DE HORAS"
-                value="+14:30"
-                sub="Saldo de horas a compensar"
+                value="—"
+                sub="Módulo Ponto ainda não integrado"
               />
               <KpiCard
                 icon={Calendar}
                 color="brand"
                 label="SALDO DE FÉRIAS"
-                value="30 dias"
-                sub="Vencimento: Dezembro/2026"
+                value="—"
+                sub="Módulo Benefícios ainda não integrado"
               />
               <KpiCard
                 icon={CheckCircle}
                 color="blue"
                 label="SAÚDE OCUPACIONAL"
-                value="Apto"
-                sub="ASO Periódico válido"
+                value="—"
+                sub="Módulo SST ainda não integrado"
               />
             </div>
 
@@ -705,42 +614,7 @@ export default function DashboardPage() {
                   <CardTitle>SUAS ATIVIDADES E PENDÊNCIAS</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3 bg-red/5 p-3 border-l-4 border-l-danger">
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-5 w-5 text-danger" />
-                        <div>
-                          <p className="font-semibold text-sm text-danger">RECONHECIMENTO DE MULTA PENDENTE</p>
-                          <p className="text-xs text-fg3 font-mono">MULTA EM 22/05/2026 — VEÍCULO PLACA VP-1234</p>
-                        </div>
-                      </div>
-                      <Link to="/frota">
-                        <Button size="sm" variant="danger">RECONHECER →</Button>
-                      </Link>
-                    </div>
-
-                    <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-semibold text-sm">HOLERITE DE MAIO DISPONÍVEL</p>
-                          <p className="text-xs text-fg3 font-mono">PDF DISPONIBILIZADO EM 30/05/2026</p>
-                        </div>
-                      </div>
-                      <Badge variant="success">ASSINADO</Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <ClipboardCheck className="h-5 w-5 text-green-600" />
-                        <div>
-                          <p className="font-semibold text-sm">ASO PERIÓDICO REALIZADO</p>
-                          <p className="text-xs text-fg3 font-mono">EXAME COMPROMISSADO EM 02/06/2026</p>
-                        </div>
-                      </div>
-                      <Badge variant="success">APTO</Badge>
-                    </div>
-                  </div>
+                  <EmptyMetric text="Nenhuma pendência registrada — os módulos de Frota, Holerites e SST ainda não estão integrados ao banco de dados." />
                 </CardContent>
               </Card>
 
@@ -750,8 +624,12 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-center bg-surface-card p-4 border border-surface-border">
-                    <p className="text-2xl font-mono tracking-widest text-primary font-bold animate-pulse">16:23:45</p>
-                    <p className="text-xs text-fg3 font-mono mt-1">Sexta-feira, 05 de Junho de 2026</p>
+                    <p className="text-2xl font-mono tracking-widest text-primary font-bold animate-pulse">
+                      {now.toLocaleTimeString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-fg3 font-mono mt-1 capitalize">
+                      {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
                   </div>
                   <Link to="/ponto" className="block">
                     <Button className="w-full flex items-center justify-center gap-2">
