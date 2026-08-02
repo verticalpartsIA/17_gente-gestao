@@ -106,6 +106,7 @@ O sistema de rotas client-side mapeia a seguinte estrutura hierárquica:
     ├── /retencao-engajamento  Retenção e Engajamento (Clima Organizacional, eNPS, Feedbacks)
     ├── /beneficios ──────── Benefícios Corporativos (VT, VR/VA, Planos de Saúde)
     ├── /colaboradores ───── Cadastro de Colaboradores / Departamento Pessoal
+    ├── /organograma ─────── Hierarquia real da empresa (ver nota de dependências abaixo)
     ├── /ponto ───────────── Ponto Eletrônico (Marcar ponto e consulta a espelho de ponto)
     ├── /holerites ───────── Folha Digital (Emissão e fechamento de holerites em lote)
     ├── /ssma ────────────── Saúde Ocupacional (ASO, EPI, NRs)
@@ -115,6 +116,22 @@ O sistema de rotas client-side mapeia a seguinte estrutura hierárquica:
     ├── /suporte ─────────── Central de atendimento e suporte técnico
     └── /meu-espaco ──────── Espaço do Colaborador (Ponto pessoal, holerites, PDI pessoal)
 ```
+
+---
+
+### 🔗 Dependências de dados do `/organograma`
+
+Diferente das outras telas do site tree acima (que hoje rodam 100% com dados mockados locais), `/organograma` já lê dados reais. Isso cria uma relação de dependência que vale deixar explícita:
+
+**Alimenta o Organograma (precedentes):**
+* Tabela `profiles` (Supabase, projeto `ubdkoqxfwcraftesgmbw`, compartilhado com o vpsistema/Portal Central) — única fonte de dados hoje.
+* `/colaboradores` grava `name`, `email`, `level`, `department` nessa mesma tabela — mas **não** edita `manager_id`, `job_title` nem `unit` (ainda só via SQL direto).
+* `/gestao-talentos?tab=cargos` e `?tab=departamentos` ainda são mockados — quando passarem a gravar em `profiles.job_title`/`profiles.department`, o Organograma reflete automaticamente, sem precisar de mudança de código.
+
+**Deveria ser consumido pelo Organograma (dependentes) — ainda não está ligado:**
+* `/profiler`, `/desempenho`, `/atracao`, `/beneficios`, `/ponto`, `/holerites` e o `/dashboard` continuam com dados mockados locais e não leem `manager_id`/hierarquia. Ligar isso é trabalho futuro — citado aqui para não passar a impressão de que já está integrado.
+
+Detalhes de implementação (montagem de árvore, tratamento de múltiplas raízes/ciclos/gestor ausente) estão documentados no topo de `src/pages/rh/OrganogramaPage.tsx` e testados em `src/lib/orgTree.test.ts` (`npm test`).
 
 ---
 

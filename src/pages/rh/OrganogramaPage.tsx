@@ -4,6 +4,7 @@ import { NAV_ITEMS } from '../DashboardPage'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { supabase } from '@/lib/supabase'
+import { buildOrgForest, treeDepth, deptVisibleIds, type ProfileRow, type OrgNode } from '@/lib/orgTree'
 import {
   Users,
   Building2,
@@ -11,22 +12,38 @@ import {
   UserCheck,
   X,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 
-// ── Dados reais — tabela profiles (Supabase, projeto compartilhado com o vpsistema) ─
-
-interface ProfileRow {
-  id: string
-  name: string
-  department: string
-  is_department_lead: boolean
-  avatar_url: string | null
-  manager_id: string | null
-}
-
-interface OrgNode extends ProfileRow {
-  reports: OrgNode[]
-}
+// ── Mapa de rotas precedentes/dependentes ───────────────────────────────────
+//
+// PRECEDENTES (quem alimenta esta tela hoje):
+//   - `profiles` (Supabase, projeto ubdkoqxfwcraftesgmbw, compartilhado com o
+//     vpsistema/Portal Central) é a ÚNICA fonte de dados. Campos usados:
+//     id, name, department, is_department_lead, avatar_url, manager_id,
+//     job_title, unit, is_active.
+//   - /colaboradores (ColaboradoresPage) é hoje a única tela deste app que
+//     escreve em `profiles` (nome, e-mail, level, department) — mas NÃO edita
+//     manager_id, job_title nem unit ainda. Esses três campos só podem ser
+//     alterados hoje via SQL direto no Supabase.
+//   - /gestao-talentos?tab=departamentos e ?tab=cargos são hoje dados
+//     mockados (arrays locais) — NÃO alimentam `profiles.department` nem
+//     `profiles.job_title` de verdade. `job_title` e `unit` existem como
+//     colunas (migration add_job_title_and_unit_to_profiles) mas estão
+//     vazias em produção até que essas telas passem a gravar no banco.
+//   - Não existe cadastro de unidades/filiais em lugar nenhum ainda;
+//     `profiles.unit` é só o placeholder de schema para quando existir.
+//
+// DEPENDENTES (quem deveria consumir a hierarquia montada aqui):
+//   - Nenhuma outra tela consome `manager_id` hoje. /profiler, /desempenho,
+//     /atracao, /beneficios, /ponto, /holerites e /dashboard ainda usam
+//     dados mockados locais (ver auditoria de módulos) e NÃO leem a cadeia
+//     de gestão montada aqui. Ligar isso é trabalho futuro, não implementado
+//     nesta página — citado aqui pra não passar a falsa impressão de que já
+//     está conectado.
+//
+// Ver src/lib/orgTree.ts para a lógica de montagem da árvore (testada em
+// src/lib/orgTree.test.ts).
 
 const DEPT_COLORS: Record<string, string> = {
   'CEO':                                   '#F5C400',
@@ -49,25 +66,6 @@ function initials(name: string) {
   const first = parts[0]?.[0] ?? ''
   const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
   return (first + last).toUpperCase()
-}
-
-function buildTree(rows: ProfileRow[]): OrgNode | null {
-  const byId = new Map<string, OrgNode>(rows.map(r => [r.id, { ...r, reports: [] }]))
-  let root: OrgNode | null = null
-  for (const row of rows) {
-    const node = byId.get(row.id)!
-    if (row.manager_id && byId.has(row.manager_id)) {
-      byId.get(row.manager_id)!.reports.push(node)
-    } else {
-      root = node
-    }
-  }
-  return root
-}
-
-function treeDepth(node: OrgNode): number {
-  if (node.reports.length === 0) return 1
-  return 1 + Math.max(...node.reports.map(treeDepth))
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -104,25 +102,28 @@ function PersonCard({ node, onClick }: { node: OrgNode; onClick: (p: OrgNode) =>
       </div>
       <div className="text-center">
         <p className="text-[11px] font-bold text-neutral-900 leading-tight">{node.name}</p>
-        <p className="text-[10px] text-neutral-500 leading-tight">{node.department}</p>
+        <p className="text-[10px] text-neutral-500 leading-tight">{node.job_title || node.department}</p>
       </div>
     </button>
   )
 }
 
 // Renderiza um nó e seus descendentes recursivamente (a árvore pode ter
-// qualquer profundidade, não só os 3 níveis do organograma operacional antigo).
-function OrgSubtree({ node, onClick }: { node: OrgNode; onClick: (p: OrgNode) => void }) {
+// qualquer profundidade). `visibleIds` controla o filtro por departamento —
+// olha a árvore inteira, não só o primeiro nível, então gente em níveis
+// profundos de um departamento filtrado não some.
+function OrgSubtree({ node, visibleIds, onClick }: { node: OrgNode; visibleIds: Set<string>; onClick: (p: OrgNode) => void }) {
+  const visibleReports = node.reports.filter(r => visibleIds.has(r.id))
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="w-px h-6 bg-neutral-300" />
       <PersonCard node={node} onClick={onClick} />
-      {node.reports.length > 0 && (
+      {visibleReports.length > 0 && (
         <>
           <div className="w-px h-4 bg-neutral-300" />
           <div className="flex gap-6 items-start">
-            {node.reports.map(child => (
-              <OrgSubtree key={child.id} node={child} onClick={onClick} />
+            {visibleReports.map(child => (
+              <OrgSubtree key={child.id} node={child} visibleIds={visibleIds} onClick={onClick} />
             ))}
           </div>
         </>
@@ -138,13 +139,14 @@ export default function OrganogramaPage() {
   const [loading, setLoading] = useState(true)
   const [selectedPerson, setSelectedPerson] = useState<OrgNode | null>(null)
   const [deptFilter, setDeptFilter] = useState<string>('Todos')
+  const [showUnpositioned, setShowUnpositioned] = useState(false)
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       const { data, error } = await (supabase as any)
         .from('profiles')
-        .select('id, name, department, is_department_lead, avatar_url, manager_id')
+        .select('id, name, department, is_department_lead, avatar_url, manager_id, job_title, unit')
         .eq('is_active', true)
         .not('department', 'is', null)
         .order('name')
@@ -154,7 +156,7 @@ export default function OrganogramaPage() {
     load()
   }, [])
 
-  const root = useMemo(() => buildTree(rows), [rows])
+  const { root, unpositioned } = useMemo(() => buildOrgForest(rows), [rows])
   const depts = useMemo(
     () => ['Todos', ...Array.from(new Set(rows.map(r => r.department))).sort()],
     [rows]
@@ -164,10 +166,11 @@ export default function OrganogramaPage() {
     [rows]
   )
   const niveis = useMemo(() => (root ? treeDepth(root) : 0), [root])
-
-  const visibleReports = (root?.reports ?? []).filter(
-    p => deptFilter === 'Todos' || p.department === deptFilter
+  const visibleIds = useMemo(
+    () => (root ? deptVisibleIds(root, deptFilter) : new Set<string>()),
+    [root, deptFilter]
   )
+  const visibleReports = (root?.reports ?? []).filter(p => visibleIds.has(p.id))
 
   if (loading) {
     return (
@@ -190,6 +193,26 @@ export default function OrganogramaPage() {
           <KpiCard icon={UserCheck} color="brand" label="GESTORES"       value={String(gestores)} sub="Com liderados diretos" />
           <KpiCard icon={Network}   color="blue"  label="NÍVEIS HIERÁRQUICOS" value={String(niveis)} sub="Da diretoria à ponta" />
         </div>
+
+        {/* Aviso de gente fora da árvore principal (raiz extra, gestor não encontrado, ciclo) */}
+        {unpositioned.length > 0 && (
+          <div className="rounded border border-amber-300 bg-amber-50 p-3">
+            <button
+              onClick={() => setShowUnpositioned(v => !v)}
+              className="flex w-full items-center gap-2 text-left text-xs font-bold text-amber-800"
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {unpositioned.length} colaborador(es) fora da árvore principal — gestor não encontrado, mais de uma raiz, ou ciclo hierárquico
+            </button>
+            {showUnpositioned && (
+              <ul className="mt-2 space-y-1 pl-6 text-xs text-amber-800">
+                {unpositioned.map(p => (
+                  <li key={p.id}>{p.name} — {p.department}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Filtro por dept */}
         <div className="flex flex-wrap gap-2">
@@ -225,7 +248,7 @@ export default function OrganogramaPage() {
 
               <div className="flex gap-6 justify-center items-start">
                 {visibleReports.map(mgr => (
-                  <OrgSubtree key={mgr.id} node={mgr} onClick={setSelectedPerson} />
+                  <OrgSubtree key={mgr.id} node={mgr} visibleIds={visibleIds} onClick={setSelectedPerson} />
                 ))}
               </div>
             </div>
@@ -261,7 +284,7 @@ export default function OrganogramaPage() {
               <div className="flex flex-col items-center gap-2 py-4">
                 <Avatar node={selectedPerson} size={64} />
                 <p className="text-lg font-bold text-neutral-900">{selectedPerson.name}</p>
-                <p className="text-sm text-neutral-500">{selectedPerson.department}</p>
+                <p className="text-sm text-neutral-500">{selectedPerson.job_title || selectedPerson.department}</p>
               </div>
 
               <div className="space-y-3">
@@ -269,6 +292,18 @@ export default function OrganogramaPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Departamento</p>
                   <p className="mt-1 text-sm font-medium text-neutral-800">{selectedPerson.department}</p>
                 </div>
+                {selectedPerson.job_title && (
+                  <div className="rounded bg-neutral-50 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Cargo</p>
+                    <p className="mt-1 text-sm font-medium text-neutral-800">{selectedPerson.job_title}</p>
+                  </div>
+                )}
+                {selectedPerson.unit && (
+                  <div className="rounded bg-neutral-50 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Unidade</p>
+                    <p className="mt-1 text-sm font-medium text-neutral-800">{selectedPerson.unit}</p>
+                  </div>
+                )}
                 {selectedPerson.is_department_lead && (
                   <div className="rounded bg-neutral-50 p-3">
                     <Badge variant="leader">Líder de departamento</Badge>
