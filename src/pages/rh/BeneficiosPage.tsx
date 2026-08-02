@@ -13,19 +13,43 @@ import {
   FileText
 } from 'lucide-react'
 
-// gestao/refeicao/transporte/saude ainda não têm tela própria — caem na aba
-// "Benefícios Ativos" (mais próxima) em vez de sempre abrir Férias sem avisar.
 const FERIAS_QUERIES = new Set(['ferias', 'minhas-ferias'])
+
+// gestao/refeicao/transporte/saude prometidos pelo menu ainda não têm tela
+// própria — mostram aviso honesto em vez de cair silenciosamente em Férias
+// ou Benefícios Ativos.
+const NO_CONTENT_LABEL: Record<string, string> = {
+  gestao: 'Gestão de Benefícios',
+  refeicao: 'Vale Refeição & Alimentação',
+  transporte: 'Vale Transporte',
+  saude: 'Plano de Saúde',
+}
 
 export default function BeneficiosPage() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<'ferias' | 'beneficios'>('ferias')
+  const urlTab = searchParams.get('tab')
 
   useEffect(() => {
-    const q = searchParams.get('tab')
-    if (!q) return
-    setActiveTab(FERIAS_QUERIES.has(q) ? 'ferias' : 'beneficios')
-  }, [searchParams])
+    if (urlTab && FERIAS_QUERIES.has(urlTab)) setActiveTab('ferias')
+  }, [urlTab])
+
+  if (urlTab && urlTab in NO_CONTENT_LABEL) {
+    return (
+      <AppShell navItems={NAV_ITEMS} pageTitle="DEPARTAMENTO PESSOAL — FÉRIAS & BENEFÍCIOS">
+        <div className="space-y-6">
+          <DemoDataBanner />
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-fg2">
+                {NO_CONTENT_LABEL[urlTab]} ainda não tem tela própria implementada.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="DEPARTAMENTO PESSOAL — FÉRIAS & BENEFÍCIOS">

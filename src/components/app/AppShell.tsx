@@ -24,9 +24,13 @@ export function AppShell({ children, navItems, pageTitle, topbarActions }: AppSh
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar navItems={navItems} />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar title={pageTitle} actions={topbarActions} />
-        <main className="flex-1 overflow-y-auto bg-neutral-50 p-6">
+        {/* min-w-0 é essencial aqui: sem ele, um flex item cresce pra caber
+            o conteúdo mais largo (ex.: tabelas com min-w fixo), estourando
+            a página inteira em vez de deixar o overflow-x-auto interno
+            de cada tabela/card rolar sozinho. */}
+        <main className="min-w-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
           {children}
         </main>
       </div>

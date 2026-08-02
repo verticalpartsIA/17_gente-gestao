@@ -94,6 +94,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+// /showcase é referência interna de design system, não uma tela do produto —
+// só administradores deveriam ver isso em produção.
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { profile, loading, isAdmin } = useAuth()
+  if (loading) return <Spinner />
+  if (!profile) return <RedirectToPortal />
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
 function GuestRoute(_props: { children: React.ReactNode }) {
   const { profile, loading } = useAuth()
   if (loading) return <Spinner />
@@ -108,7 +118,7 @@ function AppRoutes() {
       <Route path="/register"        element={<GuestRoute><RegisterPage /></GuestRoute>} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password"  element={<ResetPasswordPage />} />
-      <Route path="/showcase"        element={<ProtectedRoute><ShowcasePage /></ProtectedRoute>} />
+      <Route path="/showcase"        element={<AdminRoute><ShowcasePage /></AdminRoute>} />
       
       {/* Rotas de RH Protegidas */}
       <Route path="/dashboard"       element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
