@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { Loader2 } from 'lucide-react'
@@ -26,24 +27,39 @@ import MarketplacePage from '@/pages/rh/MarketplacePage'
 import SuportePage from '@/pages/rh/SuportePage'
 import MeuEspacoPage from '@/pages/rh/MeuEspacoPage'
 
+// Único ponto de entrada suportado é o card do vpsistema.com, que injeta
+// ?sso_token=&sso_refresh= (ver AuthProvider). Quem chegar aqui sem sessão
+// válida e sem esse par de tokens é mandado de volta pro Portal Central —
+// não existe login manual direto neste subdomínio.
+const PORTAL_URL = 'https://vpsistema.com'
+
+function Spinner() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-surface">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  )
+}
+
+function RedirectToPortal() {
+  useEffect(() => {
+    window.location.replace(PORTAL_URL)
+  }, [])
+  return <Spinner />
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth()
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-  if (!profile) return <Navigate to="/login" replace />
+  if (loading) return <Spinner />
+  if (!profile) return <RedirectToPortal />
   return <>{children}</>
 }
 
-function GuestRoute({ children }: { children: React.ReactNode }) {
+function GuestRoute(_props: { children: React.ReactNode }) {
   const { profile, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <Spinner />
   if (profile) return <Navigate to="/dashboard" replace />
-  return <>{children}</>
+  return <RedirectToPortal />
 }
 
 function AppRoutes() {
