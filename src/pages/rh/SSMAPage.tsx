@@ -113,7 +113,7 @@ export default function SSMAPage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Controle de Exames Médicos (ASO)</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Agendar ASO</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Agendamento de ASO ainda não está conectado ao banco de dados.')}>Agendar ASO</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -142,9 +142,9 @@ export default function SSMAPage() {
                       <td className="px-4 py-3">{statusBadge(row.status)}</td>
                       <td className="px-4 py-3">
                         {row.status !== 'Em Dia' ? (
-                          <Button variant="outline" size="sm">Agendar</Button>
+                          <Button variant="outline" size="sm" onClick={() => alert('Agendamento de ASO ainda não está conectado ao banco de dados.')}>Agendar</Button>
                         ) : (
-                          <Button variant="ghost" size="sm">Ver Laudo</Button>
+                          <Button variant="ghost" size="sm" onClick={() => alert('Visualização de laudo ainda não está conectada ao banco de dados.')}>Ver Laudo</Button>
                         )}
                       </td>
                     </tr>
@@ -160,7 +160,7 @@ export default function SSMAPage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Fichas de EPI — Controle de Entrega</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Registrar Entrega</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Registro de entrega de EPI ainda não está conectado ao banco de dados.')}>Registrar Entrega</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -233,7 +233,12 @@ export default function SSMAPage() {
                       <td className="px-4 py-3 text-neutral-600">{row.responsavel}</td>
                       <td className="px-4 py-3">{statusBadge(row.status)}</td>
                       <td className="px-4 py-3">
-                        <Button variant="ghost" size="sm" leftIcon={<FileText className="h-3 w-3" />}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leftIcon={<FileText className="h-3 w-3" />}
+                          onClick={() => alert('Visualização de documento de NR ainda não está conectada ao banco de dados.')}
+                        >
                           Ver Doc.
                         </Button>
                       </td>

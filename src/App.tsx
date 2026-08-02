@@ -115,6 +115,9 @@ function AppRoutes() {
       <Route path="/colaboradores"   element={<ProtectedRoute><ColaboradoresPage /></ProtectedRoute>} />
       <Route path="/ponto"           element={<ProtectedRoute><PontoPage /></ProtectedRoute>} />
       <Route path="/ssma"            element={<ProtectedRoute><SSMAPage /></ProtectedRoute>} />
+      {/* Alias intuitivo — o nome do módulo no menu é "Saúde Ocupacional (SST)",
+          mas a rota real sempre foi /ssma. Sem isso, digitar a URL óbvia dava tela em branco. */}
+      <Route path="/saude-ocupacional" element={<Navigate to="/ssma?tab=aso" replace />} />
       <Route path="/desempenho"      element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
       <Route path="/frota"           element={<ProtectedRoute><FrotaPage /></ProtectedRoute>} />
       <Route path="/organograma"     element={<ProtectedRoute><OrganogramaPage /></ProtectedRoute>} />

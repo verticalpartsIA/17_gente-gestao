@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
+import { useAuth } from '@/lib/auth'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { 
   UserCheck, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 export default function ProfilerPage() {
+  const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState<'empresa' | 'individual'>('empresa')
 
   return (
@@ -168,31 +169,16 @@ export default function ProfilerPage() {
                     <UserCheck className="h-12 w-12 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-display font-bold text-fg-on-dark uppercase">JULIANA SILVA (GESTORA)</h3>
-                    <p className="text-xs text-fg3 font-mono">ÚLTIMO PROFILER RESPONDIDO EM: 15/01/2026</p>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="admin">PERFIL PRINCIPAL: PLANEJADOR / COMUNICADOR</Badge>
-                    </div>
+                    <h3 className="text-xl font-display font-bold text-fg-on-dark uppercase">{profile?.name || 'COLABORADOR'}</h3>
+                    <p className="text-xs text-fg3 font-mono">NENHUM PROFILER RESPONDIDO AINDA</p>
                   </div>
                 </div>
 
-                <div className="border-t border-surface-border pt-4 grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                    <span className="text-[10px] text-fg3 font-mono">ENERGIA DE TRABALHO</span>
-                    <p className="text-lg font-bold font-mono text-fg-on-dark">78%</p>
-                    <p className="text-[9px] text-fg3">Capacidade produtiva sustentada.</p>
-                  </div>
-                  <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                    <span className="text-[10px] text-fg3 font-mono">ÍNDICE DE FLEXIBILIDADE</span>
-                    <p className="text-lg font-bold font-mono text-fg-on-dark">Alta</p>
-                    <p className="text-[9px] text-fg3">Adaptabilidade a novos fluxos de DP.</p>
-                  </div>
-                </div>
-
-                <div className="border-t border-surface-border pt-4 space-y-4">
-                  <h4 className="font-bold text-xs text-fg-on-dark uppercase">DESCRIÇÃO DO SEU PERFIL</h4>
+                <div className="border-t border-surface-border pt-4">
                   <p className="text-xs text-fg2">
-                    Juliana apresenta perfil colaborativo e processual. Facilidade em lidar com tarefas de planejamento, documentações minuciosas de departamento pessoal e liderança com escuta ativa. Busca manter o clima do ambiente ameno enquanto orienta as regras e regulamentos de conformidade da empresa.
+                    Você ainda não respondeu ao Profiler comportamental — a ficha de inteligência comportamental
+                    (energia de trabalho, flexibilidade, perfil predominante) aparece aqui depois da primeira resposta.
+                    Este módulo ainda não está integrado ao banco de dados.
                   </p>
                 </div>
               </CardContent>
@@ -203,10 +189,15 @@ export default function ProfilerPage() {
                 <CardTitle>AÇÕES RÁPIDAS</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full">
+                <Button className="w-full" onClick={() => alert('Questionário do Profiler ainda não está conectado ao banco de dados.')}>
                   RESPONDER PROFILER NOVAMENTE →
                 </Button>
-                <Button variant="outline" className="w-full" rightIcon={<FileText className="h-4 w-4" />}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  rightIcon={<FileText className="h-4 w-4" />}
+                  onClick={() => alert('Exportação de laudo em PDF ainda não está implementada.')}
+                >
                   EXPORTAR LAUDO PDF
                 </Button>
                 <div className="p-3 bg-surface-card border border-surface-border text-center text-xs text-fg3">

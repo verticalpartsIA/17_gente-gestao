@@ -51,6 +51,7 @@ export default function ColaboradoresPage() {
         .from('profiles')
         .select('id, name, email, avatar_url, level, department, is_active, is_department_lead')
         .eq('is_placeholder', false)
+        .not('email', 'eq', 'agente.ia@vpsistema.com')
         .order('name')
       if (!error && data) setEmployees(data as Employee[])
       setLoading(false)
