@@ -81,7 +81,7 @@ export function Sidebar({ navItems, collapsed: controlledCollapsed, onToggle }: 
   return (
     <aside
       className={cn(
-        'dark-scroll flex h-full flex-col overflow-y-auto bg-[#0D0E12] border-r border-surface-border transition-all duration-200 shrink-0 select-none font-sans',
+        'flex h-full flex-col bg-[#0D0E12] border-r border-surface-border transition-all duration-200 shrink-0 select-none font-sans',
         collapsed ? 'w-[70px]' : 'w-[260px]',
       )}
     >
@@ -116,8 +116,9 @@ export function Sidebar({ navItems, collapsed: controlledCollapsed, onToggle }: 
         )}
       </div>
 
-      {/* Navegação principal com pílulas flutuantes */}
-      <nav className="flex-1 space-y-1.5 px-3">
+      {/* Navegação principal com pílulas flutuantes — só esta área rola;
+          rodapé (usuário/Sair/Recolher) fica sempre visível */}
+      <nav className="dark-scroll min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3">
         {filteredNavItems.map((item) => {
           const hasSubItems = item.subItems && item.subItems.length > 0
           const active = isItemActive(item)

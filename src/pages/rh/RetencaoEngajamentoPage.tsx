@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -53,8 +54,16 @@ const FEEDBACKS = [
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const TAB_BY_QUERY: Record<string, number> = { enps: 0, clima: 1, feedbacks: 2 }
+
 export default function RetencaoEngajamentoPage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+
+  useEffect(() => {
+    const q = searchParams.get('tab')
+    if (q && q in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[q])
+  }, [searchParams])
 
   const TABS = ['eNPS', 'Pesquisa de Clima', 'Feedbacks 360°']
 
@@ -253,7 +262,13 @@ export default function RetencaoEngajamentoPage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Feedbacks 360° — Registros Recentes</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Novo Feedback</Button>
+              <Button
+                size="sm"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => alert('Registro de feedback ainda não está conectado ao banco de dados.')}
+              >
+                Novo Feedback
+              </Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
               {FEEDBACKS.map((fb, i) => (

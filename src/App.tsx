@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { Loader2 } from 'lucide-react'
 import LoginPage          from '@/pages/LoginPage'
@@ -41,7 +41,33 @@ function Spinner() {
   )
 }
 
+// Nome amigável do módulo por rota, só para a mensagem de transição — deixa
+// claro que a pessoa não perdeu contexto, só precisa entrar pelo card.
+const ROUTE_LABELS: Record<string, string> = {
+  '/dashboard': 'o Painel Geral',
+  '/colaboradores': 'Colaboradores',
+  '/ponto': 'o Ponto Eletrônico',
+  '/ssma': 'Saúde Ocupacional (SST)',
+  '/desempenho': 'Desenvolvimento e Performance',
+  '/frota': 'Gestão de Frota',
+  '/organograma': 'o Organograma',
+  '/profiler': 'o Profiler',
+  '/atracao': 'Atração de Talentos',
+  '/beneficios': 'Benefícios',
+  '/holerites': 'a Folha Digital',
+  '/configuracoes': 'Configurações',
+  '/gestao-talentos': 'Gestão de Talentos',
+  '/retencao-engajamento': 'Retenção e Engajamento',
+  '/marketplace': 'o Marketplace',
+  '/suporte': 'o Suporte',
+  '/meu-espaco': 'o Meu Espaço',
+  '/showcase': 'o Design System',
+}
+
 function RedirectToPortal() {
+  const location = useLocation()
+  const moduleLabel = ROUTE_LABELS[location.pathname]
+
   useEffect(() => {
     const timer = setTimeout(() => window.location.replace(PORTAL_URL), 1400)
     return () => clearTimeout(timer)
@@ -52,7 +78,9 @@ function RedirectToPortal() {
       <div>
         <p className="font-bold text-black">Redirecionando para o Portal VerticalParts</p>
         <p className="mt-1 text-sm text-neutral-600">
-          O Gente &amp; Gestão é acessado a partir do vpsistema.com. Você será levado para lá em instantes.
+          {moduleLabel
+            ? <>Para acessar {moduleLabel} do Gente &amp; Gestão, entre pelo card no vpsistema.com. Você será levado para lá em instantes.</>
+            : <>O Gente &amp; Gestão é acessado a partir do vpsistema.com. Você será levado para lá em instantes.</>}
         </p>
       </div>
     </div>

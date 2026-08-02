@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -70,12 +71,40 @@ function fmtBrl(val: number) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function GestaoTalentosPage() {
+  const [searchParams] = useSearchParams()
+  const urlTab = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(0)
   const [selectedCargo, setSelectedCargo] = useState<typeof CARGOS[0] | null>(null)
+
+  // O menu do Dashboard tem um link próprio para "Admissão Digital"
+  // (?tab=admissao) que essa página ainda não implementa como aba real —
+  // antes disso caía direto em Cargos e Salários sem avisar.
+  useEffect(() => {
+    if (urlTab === 'salarios' || urlTab === 'estrutura-salarial') setActiveTab(1)
+    else if (urlTab === 'cargos') setActiveTab(0)
+  }, [urlTab])
 
   const TABS = ['Plano de Cargos', 'Estrutura Salarial']
 
   const maxSalario = Math.max(...FAIXAS_SALARIAIS.map(f => f.max))
+
+  if (urlTab === 'admissao') {
+    return (
+      <AppShell navItems={NAV_ITEMS} pageTitle="GESTÃO DE TALENTOS — ADMISSÃO DIGITAL">
+        <div className="space-y-6">
+          <DemoDataBanner />
+          <Card theme="light">
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-neutral-600">
+                O fluxo de Admissão Digital (onboarding, upload de documentos, checklist de contratação)
+                ainda não foi implementado. Esta página hoje só cobre Cargos e Salários.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="GESTÃO DE TALENTOS — CARGOS E SALÁRIOS">
@@ -112,10 +141,16 @@ export default function GestaoTalentosPage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Plano de Cargos e Salários</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Novo Cargo</Button>
+              <Button
+                size="sm"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => alert('Cadastro de novo cargo ainda não está conectado ao banco de dados.')}
+              >
+                Novo Cargo
+              </Button>
             </CardHeader>
-            <CardContent className="p-0">
-              <table className="w-full text-sm">
+            <CardContent className="overflow-x-auto p-0">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b border-neutral-100 bg-neutral-50">
                     <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Cargo</th>

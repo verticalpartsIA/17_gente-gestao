@@ -186,7 +186,7 @@ export default function AtracaoPage() {
         {activeTab === 0 && (
           <div className="space-y-4">
             <div className="flex justify-end">
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Nova Requisição</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Requisição ainda não está conectado ao banco de dados.')}>Nova Requisição</Button>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               {KANBAN_COLS.map((col, colIdx) => (
@@ -257,7 +257,7 @@ export default function AtracaoPage() {
             <Card theme="light" noPadding>
               <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
                 <CardTitle>Candidatos em Pipeline — REQ-005 (Aux. de Logística)</CardTitle>
-                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Adicionar Candidato</Button>
+                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Adicionar Candidato ainda não está conectado ao banco de dados.')}>Adicionar Candidato</Button>
               </CardHeader>
               <CardContent className="p-0">
                 <table className="w-full text-sm">
@@ -349,7 +349,7 @@ export default function AtracaoPage() {
             <Card theme="light" noPadding className="lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
                 <CardTitle>Histórico de Comunicações</CardTitle>
-                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Nova Mensagem</Button>
+                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Mensagem ainda não está conectado ao banco de dados.')}>Nova Mensagem</Button>
               </CardHeader>
               <CardContent className="space-y-4 px-5 pt-4 pb-5">
                 {COMUNICACOES.map((c, i) => (

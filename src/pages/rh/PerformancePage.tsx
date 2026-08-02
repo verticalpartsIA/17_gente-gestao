@@ -150,7 +150,7 @@ export default function PerformancePage() {
                 <CardTitle>Avaliação de Desempenho (AVD) — Ciclo Q3 2026</CardTitle>
                 <p className="mt-1 text-xs text-neutral-500">Critérios: Autoavaliação, Avaliação do Gestor, Avaliação de Pares</p>
               </div>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Nova Avaliação</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Avaliação ainda não está conectado ao banco de dados.')}>Nova Avaliação</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -255,7 +255,7 @@ export default function PerformancePage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Gestão de Metas / OKRs — Q3 2026</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Nova Meta</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Meta ainda não está conectado ao banco de dados.')}>Nova Meta</Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
               {METAS_OKR.map((m, i) => (
@@ -294,7 +294,7 @@ export default function PerformancePage() {
                 <h3 className="font-bold text-neutral-900">PDI — Ana Paula Rocha</h3>
                 <p className="text-xs text-neutral-500">Gerente Comercial · Ciclo 2026</p>
               </div>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Nova Ação</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Ação ainda não está conectado ao banco de dados.')}>Nova Ação</Button>
             </div>
 
             {PDI_AP.map((item, i) => (
@@ -334,7 +334,7 @@ export default function PerformancePage() {
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Treinamentos — Ciclo 2026</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>Novo Treinamento</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Novo Treinamento ainda não está conectado ao banco de dados.')}>Novo Treinamento</Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
               {TREINAMENTOS.map((t, i) => (

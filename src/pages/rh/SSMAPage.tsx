@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -64,8 +65,16 @@ function statusBadge(status: string) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const TAB_BY_QUERY: Record<string, number> = { aso: 0, epis: 1, nrs: 2 }
+
 export default function SSMAPage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+
+  useEffect(() => {
+    const q = searchParams.get('tab')
+    if (q && q in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[q])
+  }, [searchParams])
 
   const TABS = ['Exames ASO', 'Fichas de EPI', 'Normas Regulamentadoras (NRs)']
 

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -12,8 +13,19 @@ import {
   FileText
 } from 'lucide-react'
 
+// gestao/refeicao/transporte/saude ainda não têm tela própria — caem na aba
+// "Benefícios Ativos" (mais próxima) em vez de sempre abrir Férias sem avisar.
+const FERIAS_QUERIES = new Set(['ferias', 'minhas-ferias'])
+
 export default function BeneficiosPage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<'ferias' | 'beneficios'>('ferias')
+
+  useEffect(() => {
+    const q = searchParams.get('tab')
+    if (!q) return
+    setActiveTab(FERIAS_QUERIES.has(q) ? 'ferias' : 'beneficios')
+  }, [searchParams])
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="DEPARTAMENTO PESSOAL — FÉRIAS & BENEFÍCIOS">
@@ -46,7 +58,13 @@ export default function BeneficiosPage() {
             <Card className="lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between border-b border-surface-border pb-4">
                 <CardTitle>PROGRAMAÇÃO DE FÉRIAS DA EQUIPE</CardTitle>
-                <Button size="sm" rightIcon={<Plus className="h-4 w-4" />}>SOLICITAR AGENDAMENTO</Button>
+                <Button
+                  size="sm"
+                  rightIcon={<Plus className="h-4 w-4" />}
+                  onClick={() => alert('Solicitação de agendamento de férias ainda não está conectada ao banco de dados.')}
+                >
+                  SOLICITAR AGENDAMENTO
+                </Button>
               </CardHeader>
               <CardContent className="divide-y divide-surface-border">
                 
