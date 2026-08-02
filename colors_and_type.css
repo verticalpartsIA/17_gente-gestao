@@ -5,7 +5,7 @@
    ============================================================ */
 
 /* ---------- Fonts (Google Fonts substitutes — see README) ---------- */
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
   /* ---- Brand primaries ---- */
@@ -59,8 +59,8 @@
   --accent-press:  var(--vp-yellow-press);
 
   /* ---- Type families ---- */
-  --font-sans:    "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
-  --font-display: "Barlow Condensed", "Inter", "Impact", sans-serif;
+  --font-sans:    "Poppins", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-display: "Poppins", "Helvetica Neue", Arial, sans-serif;
   --font-mono:    "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
   /* ---- Type scale (px) — industrial, bold, uppercase-friendly ---- */

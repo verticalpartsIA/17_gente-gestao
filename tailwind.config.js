@@ -24,7 +24,7 @@ export default {
         info:    '#3b82f6',
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       boxShadow: {
         brand:    '0 12px 28px rgba(245,196,0,0.25)',
