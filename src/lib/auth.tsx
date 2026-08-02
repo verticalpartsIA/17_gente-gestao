@@ -35,12 +35,51 @@ async function fetchProfile(userId: string): Promise<Profile> {
   return data as Profile
 }
 
+// SSO: troca o par de tokens injetado pelo vpsistema (mesmo projeto Supabase)
+// por uma sessão válida aqui. Extraído do fluxo de login para poder rodar a
+// partir de QUALQUER rota de entrada (ex.: card do vpsistema apontando direto
+// para /dashboard), não só de /login.
+async function completeSSO(accessToken: string, refreshToken: string): Promise<Profile> {
+  const { data, error } = await supabase.auth.setSession({
+    access_token:  accessToken,
+    refresh_token: refreshToken,
+  })
+  if (error || !data.user) throw new Error('Token SSO inválido ou expirado.')
+  const p = await fetchProfile(data.user.id)
+  if (p.is_active === false) {
+    await supabase.auth.signOut()
+    throw new Error('Sua conta está desativada.')
+  }
+  return p
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }: any) => {
+    async function init() {
+      // Detecta SSO injetado pelo vpsistema (?sso_token=...&sso_refresh=...)
+      // ANTES de checar a sessão existente — assim funciona não importa em
+      // qual rota protegida a pessoa entrou (o antigo código só olhava isso
+      // dentro de LoginPage, então um link direto pra /dashboard perdia os
+      // parâmetros no redirect do ProtectedRoute antes de serem lidos).
+      const params    = new URLSearchParams(window.location.search)
+      const ssoToken   = params.get('sso_token')
+      const ssoRefresh = params.get('sso_refresh')
+
+      if (ssoToken && ssoRefresh) {
+        window.history.replaceState({}, '', window.location.pathname)
+        try {
+          setProfile(await completeSSO(ssoToken, ssoRefresh))
+          setLoading(false)
+          return
+        } catch {
+          // Token inválido/expirado — segue pro fluxo normal de sessão abaixo.
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         try {
           const p = await fetchProfile(session.user.id)
@@ -51,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       setLoading(false)
-    })
+    }
+    init()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
       if (event === 'SIGNED_OUT') setProfile(null)
@@ -76,19 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(p)
     },
 
-    // SSO: chamado quando vpsistema injeta sso_token + sso_refresh na URL
+    // Mantido para compatibilidade da interface pública de useAuth(); a
+    // detecção automática de SSO agora roda no efeito de inicialização acima.
     signInWithSSO: async (accessToken, refreshToken) => {
-      const { data, error } = await supabase.auth.setSession({
-        access_token:  accessToken,
-        refresh_token: refreshToken,
-      })
-      if (error || !data.user) throw new Error('Token SSO inválido ou expirado.')
-      const p = await fetchProfile(data.user.id)
-      if (p.is_active === false) {
-        await supabase.auth.signOut()
-        throw new Error('Sua conta está desativada.')
-      }
-      setProfile(p)
+      setProfile(await completeSSO(accessToken, refreshToken))
     },
 
     signOut: async () => {

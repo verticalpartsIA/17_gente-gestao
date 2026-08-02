@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { SplitShell, FormHead, Field } from '@/components/auth'
@@ -6,26 +6,16 @@ import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/lib/auth'
 
 export default function LoginPage() {
-  const { signIn, signInWithSSO } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const [email,   setEmail]   = useState('')
   const [password,setPassword]= useState('')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
-  // Detecta SSO injetado pelo vpsistema (?sso_token=...&sso_refresh=...)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token   = params.get('sso_token')
-    const refresh = params.get('sso_refresh')
-    if (token && refresh) {
-      window.history.replaceState({}, '', window.location.pathname)
-      setLoading(true)
-      signInWithSSO(token, refresh)
-        .then(() => navigate('/dashboard', { replace: true }))
-        .catch((e: Error) => { setError(e.message); setLoading(false) })
-    }
-  }, []) // eslint-disable-line
+  // A detecção de SSO (?sso_token=...&sso_refresh=...) agora roda dentro do
+  // AuthProvider, antes mesmo desta página montar — funciona também quando o
+  // link de entrada aponta direto para uma rota protegida (ex.: /dashboard).
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
