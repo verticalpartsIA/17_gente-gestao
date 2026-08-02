@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
               {error}
             </div>
           )}
-          <form onSubmit={onSubmit}>
+          <form onSubmit={onSubmit} noValidate>
             <Field label="E-mail" type="email" placeholder="seu@verticalparts.com.br"
               autoComplete="email" required icon={<Mail className="h-4 w-4" />}
               value={email} onChange={(e) => setEmail(e.target.value)} />
