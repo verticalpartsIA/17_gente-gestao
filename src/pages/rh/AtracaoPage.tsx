@@ -314,7 +314,7 @@ export default function AtracaoPage() {
                         <p className="text-xs text-neutral-500">{e.tipo} · Entrevistador: {e.entrevistador} · {e.hora}</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">Ver Detalhes</Button>
+                    <Button variant="outline" size="sm" onClick={() => alert('Detalhes ainda não estão conectados ao banco de dados.')}>Ver Detalhes</Button>
                   </div>
                 ))}
               </CardContent>

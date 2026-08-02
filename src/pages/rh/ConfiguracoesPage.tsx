@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -12,7 +13,14 @@ import {
 } from 'lucide-react'
 
 export default function ConfiguracoesPage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<'empresa' | 'permissoes'>('empresa')
+  const urlTab = searchParams.get('tab')
+
+  useEffect(() => {
+    if (urlTab === 'rbac') setActiveTab('permissoes')
+    else if (urlTab === 'empresa') setActiveTab('empresa')
+  }, [urlTab])
 
   // RBAC permissions state
   const [permissions, setPermissions] = useState({
@@ -29,6 +37,23 @@ export default function ConfiguracoesPage() {
         [key]: !(prev[role] as any)[key]
       }
     }))
+  }
+
+  if (urlTab === 'integracoes') {
+    return (
+      <AppShell navItems={NAV_ITEMS} pageTitle="CONFIGURAÇÕES GERAIS E POLÍTICAS">
+        <div className="space-y-6">
+          <DemoDataBanner />
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-fg2">
+                Integrações &amp; API ainda não tem tela própria implementada.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppShell>
+    )
   }
 
   return (
@@ -71,7 +96,13 @@ export default function ConfiguracoesPage() {
                   <Field label="TELEFONE GERAL" value="(11) 4002-8922" readOnly />
                 </div>
                 <div className="flex justify-end gap-3 border-t border-surface-border pt-4">
-                  <Button rightIcon={<Save className="h-4 w-4" />}>SALVAR DADOS</Button>
+                  <Button
+                    rightIcon={<Save className="h-4 w-4" />}
+                    disabled
+                    title="Desabilitado: estes são dados de demonstração — este cadastro não está conectado ao banco de dados."
+                  >
+                    SALVAR DADOS
+                  </Button>
                 </div>
               </CardContent>
             </Card>

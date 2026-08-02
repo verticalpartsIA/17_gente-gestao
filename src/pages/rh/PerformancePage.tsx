@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -101,8 +102,24 @@ function progressColor(p: number) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const TAB_BY_QUERY: Record<string, number> = { avaliacao: 0, '9box': 1, metas: 2, pdi: 3, treinamentos: 4 }
+// competencias, experiencia e performance ainda não têm tela própria — o
+// menu promete 8 sub-telas, só 5 existem de verdade.
+const NO_CONTENT_LABEL: Record<string, string> = {
+  competencias: 'Competências',
+  experiencia: 'Avaliação de Experiência',
+  performance: 'Análise de Performance',
+}
+
 export default function PerformancePage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+
+  const urlTab = searchParams.get('tab')
+
+  useEffect(() => {
+    if (urlTab && urlTab in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[urlTab])
+  }, [urlTab])
 
   const TABS = ['Avaliação de Desempenho', 'Matriz 9-Box', 'Metas / OKRs', 'PDI', 'Treinamentos']
 
@@ -111,6 +128,24 @@ export default function PerformancePage() {
   // perf=0: left col | perf=1: mid col | perf=2: right col
   const getCell = (pot: number, perf: number) =>
     NINEBOX_CELLS.find(c => c.pot === pot && c.perf === perf)
+
+  if (urlTab && urlTab in NO_CONTENT_LABEL) {
+    return (
+      <AppShell navItems={NAV_ITEMS} pageTitle="DESEMPENHO E PERFORMANCE">
+        <div className="space-y-6">
+          <DemoDataBanner />
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-fg2">
+                {NO_CONTENT_LABEL[urlTab]} ainda não tem tela própria implementada — hoje esse item do menu
+                é só um link, sem conteúdo específico por trás.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="DESEMPENHO E PERFORMANCE">

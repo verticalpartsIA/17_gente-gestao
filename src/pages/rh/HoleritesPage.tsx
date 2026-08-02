@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -67,9 +68,36 @@ function Chk({ v }: { v: boolean }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HoleritesPage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+  const urlTab = searchParams.get('tab')
+
+  // fechamento/holerites apontam pra mesma tabela de Folha Digital (ela já
+  // lista os holerites por colaborador). "encargos" ainda não tem um
+  // detalhamento próprio — só o KPI de Encargos Sociais no topo.
+  useEffect(() => {
+    if (urlTab === 'fechamento' || urlTab === 'holerites') setActiveTab(0)
+  }, [urlTab])
 
   const TABS = ['Folha Digital', 'Benefícios']
+
+  if (urlTab === 'encargos') {
+    return (
+      <AppShell navItems={NAV_ITEMS} pageTitle="FOLHA DIGITAL E BENEFÍCIOS">
+        <div className="space-y-6">
+          <DemoDataBanner />
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-sm text-fg2">
+                Demonstrativo detalhado de encargos ainda não tem tela própria — hoje só o total de
+                Encargos Sociais aparece nos KPIs da aba Folha Digital.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="FOLHA DIGITAL E BENEFÍCIOS">
@@ -127,7 +155,13 @@ export default function HoleritesPage() {
                   <CardTitle>Folha de Pagamento — Julho 2026</CardTitle>
                   <p className="mt-1 text-xs text-neutral-500">9 colaboradores CLT</p>
                 </div>
-                <Button size="sm" variant="outline" leftIcon={<Download className="h-4 w-4" />}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  leftIcon={<Download className="h-4 w-4" />}
+                  disabled
+                  title="Desabilitado: os dados desta tabela são demonstrativos, não são holerites reais."
+                >
                   Exportar PDF
                 </Button>
               </CardHeader>
@@ -162,7 +196,14 @@ export default function HoleritesPage() {
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm font-bold text-neutral-900">{fmtBrl(emp.liquido)}</td>
                         <td className="px-4 py-3 text-center">
-                          <Button variant="ghost" size="sm" leftIcon={<Eye className="h-3 w-3" />}>Ver</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            leftIcon={<Eye className="h-3 w-3" />}
+                            onClick={() => alert('Visualização de holerite ainda não está conectada ao banco de dados.')}
+                          >
+                            Ver
+                          </Button>
                         </td>
                       </tr>
                     ))}
