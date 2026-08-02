@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -17,6 +18,7 @@ export default function BeneficiosPage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="DEPARTAMENTO PESSOAL — FÉRIAS & BENEFÍCIOS">
       <div className="space-y-6">
+        <DemoDataBanner />
         
         {/* TABS */}
         <div className="flex border-b border-surface-border bg-surface-card p-1">

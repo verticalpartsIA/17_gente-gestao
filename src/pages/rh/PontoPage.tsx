@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -40,6 +41,7 @@ export default function PontoPage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="PONTO ELETRÔNICO">
       <div className="space-y-6">
+        <DemoDataBanner />
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -27,6 +27,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { AppShell } from '@/components/app/AppShell'
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { useAuth } from '@/lib/auth'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -145,6 +146,7 @@ export default function DashboardPage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle={`PAINEL GERAL — ${profile?.name || 'CONVIDADO'}`}>
       <div className="space-y-6">
+        <DemoDataBanner />
         
         {/* --- VISÃO DE ADMINISTRADOR / GESTOR DE RH --- */}
         {userRole === 'Administrador' && (

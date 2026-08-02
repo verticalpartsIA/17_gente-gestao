@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -48,6 +49,7 @@ export default function MeuEspacoPage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="MEU ESPAÇO VERTICALPARTS — PORTAL DO COLABORADOR">
       <div className="space-y-6">
+        <DemoDataBanner />
         
         {/* TABS CONTROLS */}
         <div className="flex border-b border-surface-border bg-surface-card p-1 overflow-x-auto gap-1">

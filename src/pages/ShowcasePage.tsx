@@ -54,9 +54,9 @@ export default function ShowcasePage({ embedded = false }: ShowcasePageProps) {
       {/* ── HEADER (só na versão standalone) ──────────────────────── */}
       {!embedded && (
         <div className="mb-12">
-          <div className="mb-6 flex items-center justify-between">
-            <img src="/logo-color.png" alt="VerticalParts" className="h-10 object-contain" />
-            <div className="flex gap-3">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <img src="/logo-color.png" alt="VerticalParts" className="h-8 object-contain sm:h-10" />
+            <div className="flex gap-2 sm:gap-3">
               <Link to="/login">
                 <Button variant="outline" size="sm">Login</Button>
               </Link>

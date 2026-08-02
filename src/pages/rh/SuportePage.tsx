@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
+import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -48,6 +49,7 @@ export default function SuportePage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="SUPORTE & CENTRAL DE AJUDA">
       <div className="space-y-6">
+        <DemoDataBanner />
         
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">

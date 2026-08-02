@@ -43,9 +43,20 @@ function Spinner() {
 
 function RedirectToPortal() {
   useEffect(() => {
-    window.location.replace(PORTAL_URL)
+    const timer = setTimeout(() => window.location.replace(PORTAL_URL), 1400)
+    return () => clearTimeout(timer)
   }, [])
-  return <Spinner />
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div>
+        <p className="font-bold text-black">Redirecionando para o Portal VerticalParts</p>
+        <p className="mt-1 text-sm text-neutral-600">
+          O Gente &amp; Gestão é acessado a partir do vpsistema.com. Você será levado para lá em instantes.
+        </p>
+      </div>
+    </div>
+  )
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -69,7 +80,7 @@ function AppRoutes() {
       <Route path="/register"        element={<GuestRoute><RegisterPage /></GuestRoute>} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password"  element={<ResetPasswordPage />} />
-      <Route path="/showcase"        element={<ShowcasePage />} />
+      <Route path="/showcase"        element={<ProtectedRoute><ShowcasePage /></ProtectedRoute>} />
       
       {/* Rotas de RH Protegidas */}
       <Route path="/dashboard"       element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

@@ -14,6 +14,10 @@ export default function ForgotPasswordPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
+    if (!email.trim()) {
+      setError('Informe seu e-mail corporativo.')
+      return
+    }
     setLoading(true)
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,

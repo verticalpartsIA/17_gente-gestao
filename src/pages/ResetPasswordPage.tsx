@@ -1,10 +1,18 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Lock, Check, ArrowLeft, CheckCheck } from 'lucide-react'
+import { Lock, Check, ArrowLeft, CheckCheck, AlertTriangle } from 'lucide-react'
 import { CenteredShell, FormHead, Field } from '@/components/auth'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+
+// Link de recuperação do Supabase chega com #access_token=...&type=recovery
+// no hash da URL. Precisa ser lido de forma síncrona no estado inicial —
+// antes de qualquer efeito — porque o próprio cliente Supabase processa e
+// limpa esse hash da URL logo em seguida (detectSessionInUrl).
+function hasRecoveryTokenInUrl() {
+  return typeof window !== 'undefined' && /type=recovery/.test(window.location.hash)
+}
 
 function score(pw: string) {
   let s = 0
@@ -21,6 +29,7 @@ const lvlColor = ['text-neutral-500','text-red-600','text-orange-500','text-prim
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
+  const [hasToken] = useState(hasRecoveryTokenInUrl)
   const [pw,      setPw]      = useState('')
   const [pw2,     setPw2]     = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,6 +54,31 @@ export default function ResetPasswordPage() {
     setLoading(false)
     if (err) { setError('Não foi possível redefinir. Solicite um novo link.'); return }
     navigate('/login', { replace: true })
+  }
+
+  if (!hasToken) {
+    return (
+      <CenteredShell>
+        <FormHead
+          eyebrow="Nova senha"
+          title="Link inválido ou expirado"
+          description="Este link de redefinição não é válido. Solicite um novo para trocar sua senha."
+          centered
+        />
+        <div className="mb-4 flex items-start gap-2.5 rounded border-l-[3px] border-red-600 bg-red-50 p-3.5 text-sm text-red-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          Nenhum token de recuperação foi encontrado nesta URL.
+        </div>
+        <Link to="/forgot-password">
+          <Button size="lg" className="w-full">Solicitar novo link</Button>
+        </Link>
+        <div className="mt-6 text-center">
+          <Link to="/login" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-neutral-700 hover:text-black transition-colors">
+            <ArrowLeft className="h-4 w-4" /> Voltar para o login
+          </Link>
+        </div>
+      </CenteredShell>
+    )
   }
 
   return (
