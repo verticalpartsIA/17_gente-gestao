@@ -96,7 +96,7 @@ export const NAV_ITEMS = [
     subItems: [
       { label: 'Colaboradores', href: '/colaboradores' },
       { label: 'Ponto Eletrônico', href: '/ponto' },
-      { label: 'Férias & Afastamentos', href: '/beneficios?tab=ferias' }
+      { label: 'Férias & Afastamentos', href: '/ferias-afastamentos' }
     ]
   },
   {
@@ -123,7 +123,7 @@ export const NAV_ITEMS = [
     subItems: [
       { label: 'Marcar meu Ponto', href: '/ponto?tab=registrar' },
       { label: 'Meus Holerites', href: '/holerites?tab=meus' },
-      { label: 'Minhas Férias', href: '/beneficios?tab=minhas-ferias' },
+      { label: 'Minhas Férias', href: '/ferias-afastamentos' },
       { label: 'Meu PDI', href: '/desempenho?tab=pdi' }
     ]
   },
