@@ -27,6 +27,10 @@ import {
   ETAPAS_PIPELINE,
   ETAPA_LABEL,
   ENTREVISTA_TIPO_LABEL,
+  listarAdmissoes,
+  listarDocumentosPorAdmissoes,
+  marcarDocumento,
+  marcarContratoAssinado,
   type Vaga,
   type Aprovacao,
   type VagaStatus,
@@ -34,6 +38,8 @@ import {
   type CandidatoEtapa,
   type Entrevista,
   type EntrevistaStatus,
+  type Admissao,
+  type AdmissaoDocumento,
 } from '@/lib/contratacaoRepo'
 import {
   Briefcase,
@@ -86,53 +92,6 @@ interface Comunicacao {
 }
 
 const COMUNICACOES: Comunicacao[] = []
-
-interface AdmissaoDoc {
-  nome: string
-  status: boolean
-}
-
-interface Admissao {
-  id: string
-  initials: string
-  name: string
-  cargo: string
-  docs: AdmissaoDoc[]
-  assinado: boolean
-}
-
-const ADMISSOES: Admissao[] = [
-  {
-    id: 'ADM-001', initials: 'JF', name: 'João Figueiredo', cargo: 'Aux. de Logística', assinado: false,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: false },
-      { nome: 'Foto 3x4', status: false }, { nome: 'ASO — Exame admissional', status: false },
-      { nome: 'Dados bancários', status: false }, { nome: 'Formulário pré-admissional', status: false },
-    ]
-  },
-  {
-    id: 'ADM-002', initials: 'BN', name: 'Beatriz Nunes', cargo: 'Assistente Financeiro', assinado: true,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: true },
-      { nome: 'Foto 3x4', status: true }, { nome: 'ASO — Exame admissional', status: true },
-      { nome: 'Dados bancários', status: true }, { nome: 'Formulário pré-admissional', status: false },
-    ]
-  },
-  {
-    id: 'ADM-003', initials: 'RT', name: 'Rafael Teixeira', cargo: 'Assistente Financeiro', assinado: true,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: true },
-      { nome: 'Foto 3x4', status: true }, { nome: 'ASO — Exame admissional', status: true },
-      { nome: 'Dados bancários', status: true }, { nome: 'Formulário pré-admissional', status: true },
-    ]
-  },
-]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -207,7 +166,6 @@ export default function AtracaoPage() {
   const [erroLista, setErroLista] = useState<string | null>(null)
 
   const [selectedReq, setSelectedReq] = useState<Vaga | null>(null)
-  const [selectedAdm, setSelectedAdm] = useState<Admissao | null>(null)
 
   const [aprovacoes, setAprovacoes] = useState<Aprovacao[]>([])
   const [mostrarFormRecusa, setMostrarFormRecusa] = useState(false)
@@ -226,6 +184,14 @@ export default function AtracaoPage() {
   const [pipelineAcaoErro, setPipelineAcaoErro] = useState<string | null>(null)
   const [modalCandidatoAberto, setModalCandidatoAberto] = useState(false)
   const [entrevistaAlvo, setEntrevistaAlvo] = useState<Candidato | null>(null)
+
+  // Admissão Digital
+  const [admissoes, setAdmissoes] = useState<Admissao[]>([])
+  const [documentosPorAdmissao, setDocumentosPorAdmissao] = useState<Record<string, AdmissaoDocumento[]>>({})
+  const [carregandoAdmissoes, setCarregandoAdmissoes] = useState(false)
+  const [erroAdmissoes, setErroAdmissoes] = useState<string | null>(null)
+  const [selectedAdm, setSelectedAdm] = useState<Admissao | null>(null)
+  const [admissaoAcaoErro, setAdmissaoAcaoErro] = useState<string | null>(null)
 
   const TABS = ['Requisições (Kanban)', 'Pipeline de Candidatos', 'Comunicações', 'Admissão Digital']
 
@@ -409,6 +375,47 @@ export default function AtracaoPage() {
       carregarPipeline()
     } catch (e) {
       setPipelineAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  // ── Admissão Digital ───────────────────────────────────────────────────────
+
+  const carregarAdmissoes = useCallback(() => {
+    if (!persistenciaDisponivel()) return
+    setCarregandoAdmissoes(true)
+    setErroAdmissoes(null)
+    listarAdmissoes()
+      .then(async lista => {
+        setAdmissoes(lista)
+        setSelectedAdm(sel => (sel ? lista.find(a => a.id === sel.id) ?? null : null))
+        const docs = await listarDocumentosPorAdmissoes(lista.map(a => a.id))
+        const agrupado: Record<string, AdmissaoDocumento[]> = {}
+        for (const d of docs) (agrupado[d.admissao_id] ??= []).push(d)
+        setDocumentosPorAdmissao(agrupado)
+      })
+      .catch(e => setErroAdmissoes(e instanceof Error ? e.message : 'Erro ao carregar.'))
+      .finally(() => setCarregandoAdmissoes(false))
+  }, [])
+
+  useEffect(carregarAdmissoes, [carregarAdmissoes])
+
+  async function handleToggleDocumento(doc: AdmissaoDocumento) {
+    setAdmissaoAcaoErro(null)
+    try {
+      await marcarDocumento(doc.id, !doc.entregue)
+      carregarAdmissoes()
+    } catch (e) {
+      setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  async function handleToggleContrato(adm: Admissao) {
+    setAdmissaoAcaoErro(null)
+    try {
+      await marcarContratoAssinado(adm.id, !adm.contrato_assinado)
+      carregarAdmissoes()
+    } catch (e) {
+      setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
     }
   }
 
@@ -785,32 +792,63 @@ export default function AtracaoPage() {
         {/* Tab 3 — Admissão Digital */}
         {activeTab === 3 && (
           <div className="space-y-4">
-            {ADMISSOES.map(adm => {
-              const concluidos = adm.docs.filter(d => d.status).length
-              const total = adm.docs.length
-              const pct = Math.round((concluidos / total) * 100)
+            {carregandoAdmissoes && <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />}
+            {erroAdmissoes && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{erroAdmissoes}</span>
+              </div>
+            )}
+            {admissaoAcaoErro && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{admissaoAcaoErro}</span>
+              </div>
+            )}
+
+            {admissoes.length === 0 && !carregandoAdmissoes && (
+              <div className="rounded-lg border border-dashed border-neutral-200 p-8 text-center text-sm text-neutral-500">
+                Nenhuma admissão ainda — aparece aqui automaticamente quando um candidato é marcado como "Contratado" no Pipeline.
+              </div>
+            )}
+
+            {admissoes.map(adm => {
+              const docs = documentosPorAdmissao[adm.id] ?? []
+              const concluidos = docs.filter(d => d.entregue).length
+              const total = docs.length
+              const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0
+              const nome = adm.candidato?.nome ?? 'Candidato removido'
               return (
                 <Card key={adm.id} theme="light">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-black">
-                        {adm.initials}
+                        {iniciais(nome)}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold text-neutral-900">{adm.name}</p>
-                            <p className="text-xs text-neutral-500">{adm.cargo} · {adm.id}</p>
+                            <p className="font-semibold text-neutral-900">{nome}</p>
+                            <p className="text-xs text-neutral-500">
+                              {adm.vaga?.titulo_cargo ?? '—'} · {adm.vaga?.ticket_number ?? '—'}
+                            </p>
                           </div>
                           <div className="flex items-center gap-3">
-                            {adm.assinado
+                            {adm.contrato_assinado
                               ? <Badge variant="success">Contrato Assinado</Badge>
                               : <Badge variant="warning">Aguardando Docs.</Badge>
                             }
+                            {souAdministrador && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleContrato(adm)}
+                              >
+                                {adm.contrato_assinado ? 'Desfazer Assinatura' : 'Marcar Assinado'}
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedAdm(adm === selectedAdm ? null : adm)}
+                              onClick={() => setSelectedAdm(adm.id === selectedAdm?.id ? null : adm)}
                             >
                               {selectedAdm?.id === adm.id ? 'Fechar' : 'Ver Checklist'}
                             </Button>
@@ -831,13 +869,19 @@ export default function AtracaoPage() {
                     {/* Expanded checklist */}
                     {selectedAdm?.id === adm.id && (
                       <div className="mt-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
-                        {adm.docs.map((doc, i) => (
-                          <div key={i} className={`flex items-center gap-2 text-sm rounded p-2 ${
-                            doc.status ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
-                          }`}>
-                            <span className="text-base">{doc.status ? '✓' : '○'}</span>
+                        {docs.map(doc => (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            disabled={!souAdministrador}
+                            onClick={() => handleToggleDocumento(doc)}
+                            className={`flex items-center gap-2 text-left text-sm rounded p-2 transition-colors ${
+                              doc.entregue ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
+                            } ${souAdministrador ? 'hover:brightness-95 cursor-pointer' : 'cursor-default'}`}
+                          >
+                            <span className="text-base">{doc.entregue ? '✓' : '○'}</span>
                             {doc.nome}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
