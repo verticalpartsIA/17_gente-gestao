@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from './supabase'
 
 export type Level      = 'Administrador' | 'Lider' | 'Colaborador'
-export type Department = 'Compras' | 'Engenharia' | 'Financeiro' | 'Logistica' | 'MKT' | 'Vendas' | null
+export type Department = string | null
 
 export interface Profile {
   id:         string
