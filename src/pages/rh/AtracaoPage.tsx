@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -11,6 +11,7 @@ import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import { NovaRequisicaoVagaModal } from '@/components/rh/NovaRequisicaoVagaModal'
 import { NovoCandidatoModal } from '@/components/rh/NovoCandidatoModal'
 import { NovaEntrevistaModal } from '@/components/rh/NovaEntrevistaModal'
+import { ComunicacoesWhatsapp } from '@/components/rh/ComunicacoesWhatsapp'
 import {
   listarVagas,
   listarAprovacoes,
@@ -81,18 +82,6 @@ const PROXIMA_ETAPA: Partial<Record<VagaStatus, VagaStatus>> = {
   em_pipeline: 'concluida',
 }
 
-// Comunicações (WhatsApp/e-mail) ainda não têm integração real — em vez de
-// simular conversas fictícias (issue #19), a lista fica vazia até existir a
-// central de roteamento de WhatsApp (ver desenho na sessão).
-interface Comunicacao {
-  tipo: 'whatsapp' | 'email'
-  de: string
-  para: string
-  hora: string
-  msg: string
-}
-
-const COMUNICACOES: Comunicacao[] = []
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,6 +164,8 @@ export default function AtracaoPage() {
   const [erroLista, setErroLista] = useState<string | null>(null)
 
   const [selectedReq, setSelectedReq] = useState<Vaga | null>(null)
+  const [colunaDestacada, setColunaDestacada] = useState<VagaStatus | null>(null)
+  const colRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const [aprovacoes, setAprovacoes] = useState<Aprovacao[]>([])
   const [mostrarFormRecusa, setMostrarFormRecusa] = useState(false)
@@ -461,6 +452,17 @@ export default function AtracaoPage() {
   const kpiAprovacao = vagas.filter(v => v.status === 'aguardando_aprovacao').length
   const kpiPipeline = vagas.filter(v => v.status === 'em_pipeline').length
 
+  function irParaColunaKanban(status: VagaStatus | null) {
+    setActiveTab(0)
+    setColunaDestacada(status)
+    if (status) {
+      setTimeout(() => {
+        colRefs.current[status]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }, 0)
+      setTimeout(() => setColunaDestacada(null), 2000)
+    }
+  }
+
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="ATRAÇÃO DE TALENTOS">
       <div className="space-y-6">
@@ -468,10 +470,10 @@ export default function AtracaoPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" />
-          <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value={String(kpiTriagem)}  sub="Aguardando análise" />
-          <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value={String(kpiAprovacao)} sub="CEO / Diretoria" />
-          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub="Candidatos ativos" />
+          <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" onClick={() => irParaColunaKanban(null)} />
+          <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value={String(kpiTriagem)}  sub="Aguardando análise" onClick={() => irParaColunaKanban('em_triagem')} />
+          <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value={String(kpiAprovacao)} sub="CEO / Diretoria" onClick={() => irParaColunaKanban('aguardando_aprovacao')} />
+          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub="Candidatos ativos" onClick={() => setActiveTab(1)} />
         </div>
 
         {/* Tabs */}
@@ -515,7 +517,13 @@ export default function AtracaoPage() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {KANBAN_STATUSES.map((status, colIdx) => (
-                <div key={status} className="w-64 shrink-0 space-y-3">
+                <div
+                  key={status}
+                  ref={el => { colRefs.current[status] = el }}
+                  className={`w-64 shrink-0 space-y-3 rounded-lg transition-shadow ${
+                    colunaDestacada === status ? 'ring-2 ring-primary ring-offset-2' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600">{STATUS_LABEL[status]}</h3>
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-600">
@@ -767,72 +775,7 @@ export default function AtracaoPage() {
         )}
 
         {/* Tab 2 — Comunicações */}
-        {activeTab === 2 && (
-          <div className="space-y-4">
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>WhatsApp ainda não está conectado — depende da central de roteamento compartilhada com o Pós-Venda. Esta aba segue com dados de demonstração.</span>
-            </div>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Candidatos lista */}
-              <Card theme="light" className="lg:col-span-1">
-                <CardHeader className="border-b border-neutral-200 pb-4">
-                  <CardTitle>Candidatos</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-neutral-100">
-                  {candidatos.map(c => (
-                    <div key={c.id} className="flex items-center gap-3 py-3 cursor-pointer hover:bg-neutral-50 -mx-4 px-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-black">
-                        {iniciais(c.nome)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-neutral-900 truncate">{c.nome}</p>
-                        <p className="text-xs text-neutral-500 truncate">{ETAPA_LABEL[c.etapa]}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {candidatos.length === 0 && (
-                    <p className="py-6 text-center text-xs text-neutral-400">
-                      Nenhum candidato na vaga selecionada na aba Pipeline.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Feed de comunicações — sem integração real ainda (issue #19: nada de dado fabricado) */}
-              <Card theme="light" noPadding className="lg:col-span-2">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
-                  <CardTitle>Histórico de Comunicações</CardTitle>
-                  <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Mensagem ainda não está conectado ao banco de dados.')}>Nova Mensagem</Button>
-                </CardHeader>
-                <CardContent className="space-y-4 px-5 pt-4 pb-5">
-                  {COMUNICACOES.length === 0 && (
-                    <div className="py-8 text-center text-sm text-neutral-400">Nenhuma comunicação registrada ainda — este módulo ainda não está integrado a WhatsApp/e-mail real.</div>
-                  )}
-                  {COMUNICACOES.map((c, i) => (
-                    <div key={i} className={`flex gap-3 ${c.tipo === 'whatsapp' ? '' : 'flex-row-reverse'}`}>
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        c.tipo === 'whatsapp' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {c.tipo === 'whatsapp' ? 'W' : 'E'}
-                      </div>
-                      <div className={`max-w-[75%] rounded-lg p-3 text-sm ${
-                        c.tipo === 'whatsapp'
-                          ? 'bg-green-50 border border-green-200 text-neutral-800'
-                          : 'bg-blue-50 border border-blue-200 text-neutral-800'
-                      }`}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
-                          {c.tipo === 'whatsapp' ? 'WhatsApp' : 'E-mail'} · Para: {c.para} · {c.hora}
-                        </p>
-                        <p>{c.msg}</p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+        {activeTab === 2 && <ComunicacoesWhatsapp />}
 
         {/* Tab 3 — Admissão Digital */}
         {activeTab === 3 && (

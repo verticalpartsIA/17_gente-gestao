@@ -17,6 +17,7 @@ export function NovoCandidatoModal({ open, vagaId, criadoPor, onClose, onSalvo }
   const [nome, setNome] = useState('')
   const [fonte, setFonte] = useState('LinkedIn')
   const [score, setScore] = useState('')
+  const [telefone, setTelefone] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
@@ -34,7 +35,7 @@ export function NovoCandidatoModal({ open, vagaId, criadoPor, onClose, onSalvo }
   }, [open, onClose])
 
   function reiniciar() {
-    setNome(''); setFonte('LinkedIn'); setScore(''); setSalvando(false); setErro(null); setSalvo(false)
+    setNome(''); setFonte('LinkedIn'); setScore(''); setTelefone(''); setSalvando(false); setErro(null); setSalvo(false)
   }
 
   function fechar() {
@@ -55,6 +56,7 @@ export function NovoCandidatoModal({ open, vagaId, criadoPor, onClose, onSalvo }
         nome,
         fonte: fonte || null,
         score: score === '' ? null : Number(score),
+        telefone: telefone.trim() || null,
         criadoPor,
       })
       setSalvo(true)
@@ -115,6 +117,19 @@ export function NovoCandidatoModal({ open, vagaId, criadoPor, onClose, onSalvo }
                 <option key={f} value={f}>{f}</option>
               ))}
             </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+              Telefone (WhatsApp, opcional)
+            </span>
+            <input
+              value={telefone}
+              onChange={e => setTelefone(e.target.value)}
+              placeholder="Ex: 11987654321"
+              className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+            <span className="mt-1 block text-[11px] text-neutral-400">Precisa disso para poder chamar o candidato no WhatsApp.</span>
           </label>
 
           <label className="block">
