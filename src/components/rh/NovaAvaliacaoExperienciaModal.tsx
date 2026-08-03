@@ -194,6 +194,10 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props)
   const [carregandoColaboradores, setCarregandoColaboradores] = useState(false)
   const [erroColaboradores, setErroColaboradores] = useState<string | null>(null)
   const [colaboradorId, setColaboradorId] = useState('')
+  // Sem chaves do Supabase não há lista de profiles para escolher. Mantém um
+  // campo livre nesse caso, senão o questionário fica impossível de abrir em
+  // ambiente local — e ele precisa ser inspecionável sem banco.
+  const [nomeManual, setNomeManual] = useState('')
   const [cargo, setCargo] = useState('')
   const [admissao, setAdmissao] = useState('')
   const [grupo, setGrupo] = useState<Grupo | null>(null)
@@ -206,7 +210,7 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props)
   const [salvo, setSalvo] = useState(false)
 
   const colaborador = colaboradores.find(c => c.id === colaboradorId) ?? null
-  const nome = colaborador?.name ?? ''
+  const nome = colaborador?.name ?? nomeManual
 
   // Carrega a lista de colaboradores ao abrir
   useEffect(() => {
@@ -252,7 +256,8 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props)
   const protocolo = fase && resultado.faixa ? getProtocolo(fase, resultado.faixa) : null
   const prazo = fase && admissao ? alertaPrazo(fase, admissao) : null
 
-  const podeAvancar = colaboradorId !== '' && grupo !== null && fase !== null
+  const podeAvancar =
+    (colaboradorId !== '' || nome.trim() !== '') && grupo !== null && fase !== null
   const exigeJustificativa = protocolo?.exigeJustificativa ?? false
   const podeConcluir =
     resultado.completo &&
@@ -272,7 +277,7 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props)
 
   function reiniciar() {
     setEtapa('identificacao')
-    setColaboradorId(''); setCargo(''); setAdmissao('')
+    setColaboradorId(''); setNomeManual(''); setCargo(''); setAdmissao('')
     setGrupo(null); setFase(null)
     setRespostas({}); setJustificativa(''); setCopiado(false)
     setSalvando(false); setErroSalvar(null); setSalvo(false)
@@ -409,40 +414,49 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props)
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
                   Colaborador avaliado *
                 </span>
-                <select
-                  value={colaboradorId}
-                  onChange={e => {
-                    const id = e.target.value
-                    setColaboradorId(id)
-                    // Preenche o cargo a partir do cadastro, mas segue editável:
-                    // job_title está vazio em parte dos perfis.
-                    const c = colaboradores.find(x => x.id === id)
-                    setCargo(c?.job_title ?? '')
-                  }}
-                  disabled={carregandoColaboradores || colaboradores.length === 0}
-                  className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:bg-neutral-50 disabled:text-neutral-400"
-                >
-                  <option value="">
-                    {carregandoColaboradores
-                      ? 'Carregando colaboradores…'
-                      : colaboradores.length === 0
-                        ? 'Nenhum colaborador disponível'
-                        : 'Selecione o colaborador'}
-                  </option>
-                  {colaboradores.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.department ? ` — ${c.department}` : ''}
+                {persistenciaDisponivel() ? (
+                  <select
+                    value={colaboradorId}
+                    onChange={e => {
+                      const id = e.target.value
+                      setColaboradorId(id)
+                      // Preenche o cargo a partir do cadastro, mas segue editável:
+                      // job_title está vazio em parte dos perfis.
+                      const c = colaboradores.find(x => x.id === id)
+                      setCargo(c?.job_title ?? '')
+                    }}
+                    disabled={carregandoColaboradores || colaboradores.length === 0}
+                    className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:bg-neutral-50 disabled:text-neutral-400"
+                  >
+                    <option value="">
+                      {carregandoColaboradores
+                        ? 'Carregando colaboradores…'
+                        : colaboradores.length === 0
+                          ? 'Nenhum colaborador disponível'
+                          : 'Selecione o colaborador'}
                     </option>
-                  ))}
-                </select>
+                    {colaboradores.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.department ? ` — ${c.department}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={nomeManual}
+                    onChange={e => setNomeManual(e.target.value)}
+                    placeholder="Nome do colaborador"
+                    className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                )}
                 {erroColaboradores && (
                   <span className="mt-1 block text-[11px] text-red-600">{erroColaboradores}</span>
                 )}
                 {!persistenciaDisponivel() && (
                   <span className="mt-1 block text-[11px] text-amber-700">
-                    App em modo simulado (sem chaves do Supabase): a lista de colaboradores e a
-                    gravação estão indisponíveis.
+                    Modo simulado (sem chaves do Supabase): sem lista de colaboradores e sem
+                    gravação. O questionário funciona para conferência.
                   </span>
                 )}
               </label>
