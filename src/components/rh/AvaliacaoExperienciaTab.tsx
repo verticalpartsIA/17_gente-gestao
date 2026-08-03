@@ -110,11 +110,11 @@ export function AvaliacaoExperienciaTab() {
               Nenhuma avaliação de experiência registrada
             </p>
             <p className="mt-1 max-w-md text-xs text-neutral-500">
-              O questionário já funciona de ponta a ponta e calcula o resultado, mas as respostas
-              ainda não são gravadas — falta criar as tabelas de persistência.
+              O questionário já funciona de ponta a ponta e calcula o resultado. As tabelas também
+              já existem no banco — falta ligar a gravação pela tela.
             </p>
             <div className="mt-3">
-              <Badge variant="warning">Sem persistência</Badge>
+              <Badge variant="warning">Gravação não ligada</Badge>
             </div>
             <div className="mt-4">
               <Button
