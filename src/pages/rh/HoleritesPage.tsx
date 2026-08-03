@@ -14,44 +14,17 @@ import {
   Eye
 } from 'lucide-react'
 
-// ── Data from HTML prototype — DP e Folha tabs 3 (Folha Digital) e 4 (Benefícios) ──
+// Nenhuma folha real foi processada ainda (não existe rh_folha) — os arrays
+// ficam vazios em vez de fabricar salário/INSS/IRRF de pessoas reais.
+const FOLHA_EMPLOYEES: { name: string; regime: string; salBase: number; he: number; inss: number; irrf: number; liquido: number }[] = []
 
-// Folha Digital — Tab 3
-const FOLHA_EMPLOYEES = [
-  { name: 'Ana Paula Rocha',  regime: 'CLT', salBase: 9000,  he: 500,   inss: 932,  irrf: 1250, liquido: 7318 },
-  { name: 'Carlos Mendes',    regime: 'CLT', salBase: 5600,  he: 756,   inss: 695,  irrf: 567,  liquido: 5094 },
-  { name: 'Roberto Faria',    regime: 'CLT', salBase: 11000, he: 0,     inss: 908,  irrf: 1820, liquido: 8272 },
-  { name: 'Felipe Santos',    regime: 'CLT', salBase: 5000,  he: 0,     inss: 550,  irrf: 412,  liquido: 4038 },
-  { name: 'Juliana Melo',     regime: 'CLT', salBase: 6500,  he: 0,     inss: 686,  irrf: 803,  liquido: 5011 },
-  { name: 'Bruno Almeida',    regime: 'CLT', salBase: 4200,  he: 0,     inss: 420,  irrf: 241,  liquido: 3539 },
-  { name: 'Beatriz Nunes',    regime: 'CLT', salBase: 2500,  he: 0,     inss: 225,  irrf: 0,    liquido: 2275 },
-  { name: 'Daniela Souza',    regime: 'CLT', salBase: 4200,  he: 378,   inss: 453,  irrf: 271,  liquido: 3854 },
-  { name: 'Paulo Rodrigues',  regime: 'CLT', salBase: 6200,  he: 0,     inss: 651,  irrf: 738,  liquido: 4811 },
-]
+const TOTAL_BRUTO = 0
+const TOTAL_ENCARGOS = 0
+const TOTAL_CUSTO = 0
 
-const TOTAL_BRUTO = 66400
-const TOTAL_ENCARGOS = 18592
-const TOTAL_CUSTO = 84992
+const BENEFICIOS_CARDS: { nome: string; valor: string; cobertura: string; cor: string }[] = []
 
-// Benefícios — Tab 4
-const BENEFICIOS_CARDS = [
-  { nome: 'Vale Refeição',     valor: 'R$ 25,00/dia',      cobertura: '100% colaboradores', cor: 'bg-green-50 border-green-200 text-green-700' },
-  { nome: 'Vale Transporte',   valor: 'R$ 6,00/trajeto',   cobertura: 'Conforme distância',  cor: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { nome: 'Plano de Saúde',    valor: 'R$ 380,00/mês',     cobertura: 'Unimed — Copart.',    cor: 'bg-red-50 border-red-200 text-red-700' },
-  { nome: 'Plano Odontológico',valor: 'R$ 45,00/mês',      cobertura: 'OdontoSESC',          cor: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { nome: 'Seguro de Vida',    valor: 'R$ 20,00/mês',      cobertura: '100% colaboradores',  cor: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-]
-
-const BENEFICIOS_EMPLOYEES = [
-  { name: 'Ana Paula Rocha', vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Carlos Mendes',   vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Roberto Faria',   vr: true, vt: false,saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Felipe Santos',   vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Juliana Melo',    vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Bruno Almeida',   vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-  { name: 'Beatriz Nunes',   vr: true, vt: true, saude: true, odonto: false,seguro: true, total: 1525 },
-  { name: 'Paulo Rodrigues', vr: true, vt: true, saude: true, odonto: true, seguro: true, total: 1525 },
-]
+const BENEFICIOS_EMPLOYEES: { name: string; vr: boolean; vt: boolean; saude: boolean; odonto: boolean; seguro: boolean; total: number }[] = []
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,10 +79,10 @@ export default function HoleritesPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard icon={DollarSign} color="green"  label="TOTAL BRUTO"     value="R$ 66.400"  sub="Competência Julho/2026" />
-          <KpiCard icon={DollarSign} color="orange" label="ENCARGOS SOCIAIS" value="R$ 18.592" sub="FGTS, INSS patronal etc." />
-          <KpiCard icon={DollarSign} color="red"    label="CUSTO TOTAL RH"   value="R$ 84.992" sub="Folha + Encargos" />
-          <KpiCard icon={Gift}       color="blue"   label="PACOTE BENEFÍCIOS" value="R$ 1.525"  sub="Por colaborador/mês" />
+          <KpiCard icon={DollarSign} color="green"  label="TOTAL BRUTO"     value="—"  sub="Módulo ainda não integrado" />
+          <KpiCard icon={DollarSign} color="orange" label="ENCARGOS SOCIAIS" value="—" sub="Módulo ainda não integrado" />
+          <KpiCard icon={DollarSign} color="red"    label="CUSTO TOTAL RH"   value="—" sub="Módulo ainda não integrado" />
+          <KpiCard icon={Gift}       color="blue"   label="PACOTE BENEFÍCIOS" value="—"  sub="Módulo ainda não integrado" />
         </div>
 
         {/* Tabs */}
@@ -153,7 +126,7 @@ export default function HoleritesPage() {
               <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
                 <div>
                   <CardTitle>Folha de Pagamento — Julho 2026</CardTitle>
-                  <p className="mt-1 text-xs text-neutral-500">9 colaboradores CLT</p>
+                  <p className="mt-1 text-xs text-neutral-500">{FOLHA_EMPLOYEES.length} colaboradores CLT</p>
                 </div>
                 <Button
                   size="sm"
@@ -180,6 +153,9 @@ export default function HoleritesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
+                    {FOLHA_EMPLOYEES.length === 0 && (
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhuma folha processada ainda.</td></tr>
+                    )}
                     {FOLHA_EMPLOYEES.map((emp, i) => (
                       <tr key={i} className="hover:bg-neutral-50">
                         <td className="px-4 py-3 font-medium text-neutral-900">{emp.name}</td>
@@ -227,15 +203,19 @@ export default function HoleritesPage() {
         {activeTab === 1 && (
           <div className="space-y-6">
             {/* Cards de benefícios */}
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-              {BENEFICIOS_CARDS.map((b, i) => (
-                <div key={i} className={`rounded-lg border p-4 ${b.cor}`}>
-                  <p className="text-xs font-bold uppercase tracking-wider">{b.nome}</p>
-                  <p className="mt-2 text-sm font-bold">{b.valor}</p>
-                  <p className="mt-1 text-[11px] opacity-70">{b.cobertura}</p>
-                </div>
-              ))}
-            </div>
+            {BENEFICIOS_CARDS.length === 0 ? (
+              <p className="py-4 text-center text-sm text-neutral-400">Nenhum benefício cadastrado ainda.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+                {BENEFICIOS_CARDS.map((b, i) => (
+                  <div key={i} className={`rounded-lg border p-4 ${b.cor}`}>
+                    <p className="text-xs font-bold uppercase tracking-wider">{b.nome}</p>
+                    <p className="mt-2 text-sm font-bold">{b.valor}</p>
+                    <p className="mt-1 text-[11px] opacity-70">{b.cobertura}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Tabela por colaborador */}
             <Card theme="light" noPadding>
@@ -256,6 +236,9 @@ export default function HoleritesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
+                    {BENEFICIOS_EMPLOYEES.length === 0 && (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum benefício por colaborador cadastrado ainda.</td></tr>
+                    )}
                     {BENEFICIOS_EMPLOYEES.map((emp, i) => (
                       <tr key={i} className="hover:bg-neutral-50">
                         <td className="px-4 py-3 font-medium text-neutral-900">{emp.name}</td>
