@@ -34,6 +34,21 @@ serve(async (req: Request) => {
     const { data: userData, error: userError } = await sbAuth.auth.getUser()
     if (userError || !userData.user) return json({ error: 'Não autenticado' }, 401)
 
+    const sb = createClient(SB_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+
+    // A tela só mostra este botão para Administrador, mas quem garante isso
+    // de verdade precisa ser o servidor — chamar a função direto (sem passar
+    // pela UI) não pode virar um jeito de mandar WhatsApp da empresa pra
+    // qualquer número usando credenciais de serviço.
+    const { data: perfil, error: perfilError } = await sb
+      .from('profiles')
+      .select('level')
+      .eq('id', userData.user.id)
+      .single()
+    if (perfilError || perfil?.level !== 'Administrador') {
+      return json({ error: 'Só o RH (Administrador) pode iniciar conversas de WhatsApp.' }, 403)
+    }
+
     const { candidatoId, phone: rawPhone, text } = await req.json()
     if (!rawPhone || !text?.trim()) return json({ error: 'phone e text são obrigatórios' }, 422)
 
@@ -47,7 +62,6 @@ serve(async (req: Request) => {
     if (!evoApikey) return json({ error: 'EVOLUTION_APIKEY não configurada' }, 500)
 
     const remoteJid = `${phone}@s.whatsapp.net`
-    const sb = createClient(SB_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
     const { error: routingError } = await sb.from('contratacao_whatsapp_routing').upsert({
       remote_jid: remoteJid,

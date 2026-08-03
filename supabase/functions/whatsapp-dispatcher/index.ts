@@ -46,27 +46,35 @@ function extractBody(msg: Record<string, unknown> | undefined): string {
   return '[mídia]'
 }
 
-async function sendText(apikey: string, number: string, text: string) {
+/** Retorna true só se a Evolution API confirmou o envio (2xx). */
+async function sendText(apikey: string, number: string, text: string): Promise<boolean> {
   try {
-    await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+    const r = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey },
       body: JSON.stringify({ number, text }),
     })
+    if (!r.ok) console.error('whatsapp-dispatcher: Evolution recusou o envio', r.status, await r.text().catch(() => ''))
+    return r.ok
   } catch (err) {
     console.error('whatsapp-dispatcher: falha ao enviar texto via Evolution', err)
+    return false
   }
 }
 
-async function relayToPosvenda(rawBody: string, apikey: string) {
+/** Retorna true só se o Pós-Venda confirmou o recebimento (2xx). */
+async function relayToPosvenda(rawBody: string, apikey: string): Promise<boolean> {
   try {
-    await fetch(POSVENDA_WEBHOOK_URL, {
+    const r = await fetch(POSVENDA_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey },
       body: rawBody,
     })
+    if (!r.ok) console.error('whatsapp-dispatcher: Pós-Venda recusou o repasse', r.status, await r.text().catch(() => ''))
+    return r.ok
   } catch (err) {
     console.error('whatsapp-dispatcher: falha ao repassar pro Pós-Venda', err)
+    return false
   }
 }
 
@@ -83,18 +91,24 @@ serve(async (req: Request) => {
     return json({ error: 'Unauthorized' }, 401)
   }
 
+  // Repasse "oficial" — se falhar, não finge sucesso pro Evolution: quem
+  // olhar os logs (ou uma futura fila de retry) precisa saber que essa
+  // mensagem NÃO chegou em lugar nenhum.
+  async function relayOrFail(): Promise<Response> {
+    const ok = await relayToPosvenda(rawBody, apikey)
+    return ok ? json({ ok: true }) : json({ error: 'Falha ao repassar pro Pós-Venda' }, 502)
+  }
+
   try {
     const payload = JSON.parse(rawBody)
 
     if (payload.event !== 'messages.upsert') {
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      return await relayOrFail()
     }
 
     const { key, pushName, message } = payload.data ?? {}
     if (!key?.remoteJid) {
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      return await relayOrFail()
     }
 
     const remoteJid: string = key.remoteJid
@@ -104,31 +118,42 @@ serve(async (req: Request) => {
     const messageId: string | null = key.id ?? null
 
     if (isGroup) {
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      return await relayOrFail()
     }
 
     const sb = createClient(SB_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
-    const { data: existing } = await sb
+    const { data: existing, error: lookupError } = await sb
       .from('contratacao_whatsapp_routing')
       .select('*')
       .eq('remote_jid', remoteJid)
       .maybeSingle()
+
+    // Falha ao consultar o roteamento — NUNCA tratar como "primeiro contato"
+    // (isso perderia/atrapalharia uma conversa já decidida). Mais seguro:
+    // mesmo destino de hoje.
+    if (lookupError) {
+      console.error('whatsapp-dispatcher: falha ao consultar roteamento', lookupError)
+      return await relayOrFail()
+    }
 
     // Já roteado pro RH — grava aqui, não repassa.
     if (existing?.departamento === 'rh') {
       const { error } = await sb.from('contratacao_whatsapp_mensagens').insert({
         remote_jid: remoteJid, from_me: fromMe, push_name: pushName ?? null, body, message_id: messageId,
       })
-      if (error && error.code !== '23505') console.error('whatsapp-dispatcher: insert mensagem rh falhou', error)
+      if (error && error.code !== '23505') {
+        // Não é duplicata — é uma falha de verdade. Como mensagem 'rh' não
+        // é repassada a mais nenhum lugar, não pode virar 200 mentiroso.
+        console.error('whatsapp-dispatcher: insert mensagem rh falhou', error)
+        return json({ error: 'Falha ao gravar a mensagem' }, 500)
+      }
       return json({ ok: true })
     }
 
     // Já roteado pro Pós-Venda — repassa sem tocar em nada.
     if (existing?.departamento === 'posvenda') {
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      return await relayOrFail()
     }
 
     // Eco de uma mensagem nossa (fromMe) sem linha de roteamento ainda — não
@@ -136,8 +161,7 @@ serve(async (req: Request) => {
     // antes de mandar), mas se acontecer o mais seguro é tratar como hoje:
     // repassar pro Pós-Venda.
     if (fromMe) {
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      return await relayOrFail()
     }
 
     const texto = body.trim().toLowerCase()
@@ -147,33 +171,47 @@ serve(async (req: Request) => {
 
     // Primeiro contato — pergunta e não repassa nada ainda.
     if (!existing) {
-      await sb.from('contratacao_whatsapp_routing').insert({
+      const { error: insertRoutingError } = await sb.from('contratacao_whatsapp_routing').insert({
         remote_jid: remoteJid, push_name: pushName ?? null, status: 'aguardando_escolha', tentativas: 0,
       })
-      await sendText(
+      if (insertRoutingError) console.error('whatsapp-dispatcher: insert routing (1o contato) falhou', insertRoutingError)
+
+      const enviado = await sendText(
         apikey, numero,
         'Olá! 👋 Pra te encaminhar certo: você quer falar sobre uma *vaga de emprego* ou sobre *um pedido/produto*?\n\nResponda *1* para Vagas (RH) ou *2* para Suporte.',
       )
+      if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
       return json({ ok: true })
     }
 
     if (ehRH) {
-      await sb.from('contratacao_whatsapp_routing')
+      const { error: updError } = await sb.from('contratacao_whatsapp_routing')
         .update({ departamento: 'rh', status: 'decidido', decidido_em: new Date().toISOString() })
         .eq('remote_jid', remoteJid)
-      await sb.from('contratacao_whatsapp_mensagens').insert({
+      if (updError) {
+        console.error('whatsapp-dispatcher: update routing (rh) falhou', updError)
+        return json({ error: 'Falha ao gravar o roteamento' }, 500)
+      }
+      const { error: insError } = await sb.from('contratacao_whatsapp_mensagens').insert({
         remote_jid: remoteJid, from_me: false, push_name: pushName ?? null, body, message_id: messageId,
       })
-      await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊')
+      if (insError && insError.code !== '23505') {
+        console.error('whatsapp-dispatcher: insert mensagem (rh) falhou', insError)
+        return json({ error: 'Falha ao gravar a mensagem' }, 500)
+      }
+      // Confirmação é cortesia — a mensagem do candidato já está gravada
+      // acima, então uma falha aqui não perde nada, só não avisa a pessoa.
+      const enviado = await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊')
+      if (!enviado) console.warn('whatsapp-dispatcher: confirmação de RH não foi entregue')
       return json({ ok: true })
     }
 
     if (ehSuporte) {
-      await sb.from('contratacao_whatsapp_routing')
+      const { error: updError } = await sb.from('contratacao_whatsapp_routing')
         .update({ departamento: 'posvenda', status: 'decidido', decidido_em: new Date().toISOString() })
         .eq('remote_jid', remoteJid)
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      if (updError) console.error('whatsapp-dispatcher: update routing (posvenda) falhou', updError)
+      return await relayOrFail()
     }
 
     // Não entendeu — repete de forma mais simples, até 3 tentativas. Depois
@@ -181,21 +219,24 @@ serve(async (req: Request) => {
     // pessoa presa num menu que ela não está respondendo.
     const tentativas = (existing.tentativas ?? 0) + 1
     if (tentativas >= 3) {
-      await sb.from('contratacao_whatsapp_routing')
+      const { error: updError } = await sb.from('contratacao_whatsapp_routing')
         .update({ departamento: 'posvenda', status: 'decidido', decidido_em: new Date().toISOString(), tentativas })
         .eq('remote_jid', remoteJid)
-      await relayToPosvenda(rawBody, apikey)
-      return json({ ok: true })
+      if (updError) console.error('whatsapp-dispatcher: update routing (fallback posvenda) falhou', updError)
+      return await relayOrFail()
     }
 
-    await sb.from('contratacao_whatsapp_routing').update({ tentativas }).eq('remote_jid', remoteJid)
-    await sendText(apikey, numero, 'Não entendi 🙏 Responda só *1* (vaga de emprego) ou *2* (suporte/pedido).')
+    const { error: tentError } = await sb.from('contratacao_whatsapp_routing').update({ tentativas }).eq('remote_jid', remoteJid)
+    if (tentError) console.error('whatsapp-dispatcher: update tentativas falhou', tentError)
+    const enviado = await sendText(apikey, numero, 'Não entendi 🙏 Responda só *1* (vaga de emprego) ou *2* (suporte/pedido).')
+    if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
     return json({ ok: true })
   } catch (err) {
     // Qualquer bug daqui pra baixo não pode sumir com a mensagem: cai no
-    // mesmo destino de hoje.
+    // mesmo destino de hoje. Se até o repasse de emergência falhar, avisa
+    // com sinceridade — não finge sucesso.
     console.error('whatsapp-dispatcher: erro inesperado, repassando por segurança', err)
-    await relayToPosvenda(rawBody, apikey)
-    return json({ ok: true, fallback: true })
+    const ok = await relayToPosvenda(rawBody, apikey)
+    return json({ ok, fallback: true }, ok ? 200 : 502)
   }
 })

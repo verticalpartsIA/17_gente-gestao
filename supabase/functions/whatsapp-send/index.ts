@@ -38,13 +38,25 @@ serve(async (req: Request) => {
     const { data: userData, error: userError } = await sbAuth.auth.getUser()
     if (userError || !userData.user) return json({ error: 'Não autenticado' }, 401)
 
+    const sb = createClient(SB_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
+
+    // Mesma trava do whatsapp-start: a UI só mostra isso para Administrador,
+    // mas o servidor não pode confiar só nisso — quem chama a função direto
+    // com credenciais de serviço por baixo precisa passar pela mesma regra.
+    const { data: perfil, error: perfilError } = await sb
+      .from('profiles')
+      .select('level')
+      .eq('id', userData.user.id)
+      .single()
+    if (perfilError || perfil?.level !== 'Administrador') {
+      return json({ error: 'Só o RH (Administrador) pode enviar mensagens de WhatsApp.' }, 403)
+    }
+
     const { remoteJid, text } = await req.json()
     if (!remoteJid || !text?.trim()) return json({ error: 'remoteJid e text são obrigatórios' }, 422)
 
     const evoApikey = Deno.env.get('EVOLUTION_APIKEY')
     if (!evoApikey) return json({ error: 'EVOLUTION_APIKEY não configurada' }, 500)
-
-    const sb = createClient(SB_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')
 
     const { data: routing } = await sb
       .from('contratacao_whatsapp_routing')

@@ -289,9 +289,10 @@ export function ComunicacoesWhatsapp() {
                 <input
                   value={texto}
                   onChange={e => setTexto(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleEnviar() }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !enviando) handleEnviar() }}
+                  disabled={enviando}
                   placeholder="Digite sua mensagem..."
-                  className="flex-1 rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  className="flex-1 rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:bg-neutral-50"
                 />
                 <Button size="sm" disabled={!texto.trim()} loading={enviando} onClick={handleEnviar}>
                   <Send className="h-4 w-4" />
