@@ -305,6 +305,7 @@ export interface Candidato {
   nome: string
   fonte: string | null
   score: number | null
+  telefone: string | null
   etapa: CandidatoEtapa
   observacoes: string | null
   criado_por: string | null
@@ -349,6 +350,7 @@ export interface NovoCandidatoInput {
   nome: string
   fonte: string | null
   score: number | null
+  telefone: string | null
   criadoPor: string
 }
 
@@ -361,6 +363,7 @@ export async function criarCandidato(input: NovoCandidatoInput): Promise<{ id: s
       nome: input.nome.trim(),
       fonte: input.fonte,
       score: input.score,
+      telefone: input.telefone,
       criado_por: input.criadoPor,
     })
     .select('id')
@@ -372,6 +375,19 @@ export async function criarCandidato(input: NovoCandidatoInput): Promise<{ id: s
     throw new Error(`Não foi possível adicionar o candidato: ${error.message}`)
   }
   return data as { id: string }
+}
+
+/** Candidatos com telefone cadastrado — para iniciar conversa de WhatsApp. */
+export async function listarCandidatosComTelefone(): Promise<Candidato[]> {
+  if (isMockMode) return []
+  const { data, error } = await db
+    .from('contratacao_candidatos')
+    .select('*')
+    .not('telefone', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(`Não foi possível carregar os candidatos: ${error.message}`)
+  return (data ?? []) as Candidato[]
 }
 
 export async function atualizarEtapaCandidato(candidatoId: string, etapa: CandidatoEtapa): Promise<void> {
