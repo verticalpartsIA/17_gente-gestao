@@ -52,25 +52,31 @@ interface Candidate {
   req: string
 }
 
-const CANDIDATOS: Candidate[] = [
-  { initials: 'MA', name: 'Marcos Andrade',  fonte: 'LinkedIn',         score: 87, stage: 'Entrevista — Gestor', req: 'REQ-005' },
-  { initials: 'PC', name: 'Priya Correia',   fonte: 'Indeed',           score: 74, stage: 'Entrevista — RH',     req: 'REQ-005' },
-  { initials: 'JF', name: 'João Figueiredo', fonte: 'Indicação Interna', score: 91, stage: 'Proposta Enviada',    req: 'REQ-005' },
-  { initials: 'LS', name: 'Lívia Santos',    fonte: 'Gupy',             score: 68, stage: 'Triagem',             req: 'REQ-005' },
-]
+// Pipeline de candidatos e comunicações ainda não têm integração real com
+// nenhum sistema de recrutamento/WhatsApp/e-mail — em vez de simular pessoas
+// e conversas fictícias (issue #19), as listas ficam vazias até existir a
+// integração de verdade.
+const CANDIDATOS: Candidate[] = []
 
-const COMUNICACOES = [
-  { tipo: 'whatsapp', de: 'RH', para: 'Marcos Andrade',  hora: '10:30', msg: 'Olá, Marcos! Gostaríamos de confirmar sua entrevista para amanhã, 25/Jul, às 10h com o Gestor.' },
-  { tipo: 'email',    de: 'RH', para: 'Priya Correia',   hora: '09:45', msg: 'Priya, sua entrevista com o RH está confirmada para 26/Jul às 14h. Enviaremos o link da reunião.' },
-  { tipo: 'whatsapp', de: 'RH', para: 'Lívia Santos',    hora: '09:15', msg: 'Lívia, recebemos seu currículo! Gostaríamos de agendar uma triagem inicial. Você tem disponibilidade?' },
-  { tipo: 'email',    de: 'RH', para: 'João Figueiredo', hora: '08:55', msg: 'João, segue em anexo a proposta formal de trabalho. Por favor, revise e confirme até 30/Jul.' },
-]
+interface Comunicacao {
+  tipo: 'whatsapp' | 'email'
+  de: string
+  para: string
+  hora: string
+  msg: string
+}
 
-const ENTREVISTAS = [
-  { data: '25/Jul', candidato: 'Marcos Andrade',  tipo: 'Entrevista — Gestor', entrevistador: 'Felipe Santos', hora: '10:00h' },
-  { data: '26/Jul', candidato: 'Priya Correia',   tipo: 'Entrevista — RH',     entrevistador: 'Gelson Simões', hora: '14:00h' },
-  { data: '28/Jul', candidato: 'Lívia Santos',    tipo: 'Triagem RH',           entrevistador: 'Gelson Simões', hora: '09:30h' },
-]
+const COMUNICACOES: Comunicacao[] = []
+
+interface Entrevista {
+  data: string
+  candidato: string
+  tipo: string
+  entrevistador: string
+  hora: string
+}
+
+const ENTREVISTAS: Entrevista[] = []
 
 interface AdmissaoDoc {
   nome: string
@@ -162,7 +168,7 @@ export default function AtracaoPage() {
           <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value="5"  sub="Requisições ativas" />
           <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value="2"  sub="Aguardando análise" />
           <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value="1" sub="CEO / Diretoria" />
-          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value="1"  sub="4 candidatos ativos" />
+          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value="1"  sub={`${CANDIDATOS.length} candidatos ativos`} />
         </div>
 
         {/* Tabs */}
@@ -256,7 +262,7 @@ export default function AtracaoPage() {
             {/* Tabela candidatos */}
             <Card theme="light" noPadding>
               <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
-                <CardTitle>Candidatos em Pipeline — REQ-005 (Aux. de Logística)</CardTitle>
+                <CardTitle>Candidatos em Pipeline</CardTitle>
                 <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Adicionar Candidato ainda não está conectado ao banco de dados.')}>Adicionar Candidato</Button>
               </CardHeader>
               <CardContent className="p-0">
@@ -271,6 +277,9 @@ export default function AtracaoPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
+                    {CANDIDATOS.length === 0 && (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum candidato em pipeline ainda — este módulo ainda não está integrado a um sistema de recrutamento.</td></tr>
+                    )}
                     {CANDIDATOS.map((c, i) => (
                       <tr key={i} className="hover:bg-neutral-50">
                         <td className="px-4 py-3">
@@ -302,6 +311,9 @@ export default function AtracaoPage() {
                 <CardTitle>Entrevistas Agendadas</CardTitle>
               </CardHeader>
               <CardContent className="divide-y divide-neutral-100 px-5">
+                {ENTREVISTAS.length === 0 && (
+                  <div className="py-8 text-center text-sm text-neutral-400">Nenhuma entrevista agendada ainda.</div>
+                )}
                 {ENTREVISTAS.map((e, i) => (
                   <div key={i} className="py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -331,6 +343,9 @@ export default function AtracaoPage() {
                 <CardTitle>Candidatos</CardTitle>
               </CardHeader>
               <CardContent className="divide-y divide-neutral-100">
+                {CANDIDATOS.length === 0 && (
+                  <div className="py-8 text-center text-sm text-neutral-400">Nenhum candidato cadastrado ainda.</div>
+                )}
                 {CANDIDATOS.map((c, i) => (
                   <div key={i} className="flex items-center gap-3 py-3 cursor-pointer hover:bg-neutral-50 -mx-4 px-4">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-black">
@@ -352,6 +367,9 @@ export default function AtracaoPage() {
                 <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Mensagem ainda não está conectado ao banco de dados.')}>Nova Mensagem</Button>
               </CardHeader>
               <CardContent className="space-y-4 px-5 pt-4 pb-5">
+                {COMUNICACOES.length === 0 && (
+                  <div className="py-8 text-center text-sm text-neutral-400">Nenhuma comunicação registrada ainda — este módulo ainda não está integrado a WhatsApp/e-mail real.</div>
+                )}
                 {COMUNICACOES.map((c, i) => (
                   <div key={i} className={`flex gap-3 ${c.tipo === 'whatsapp' ? '' : 'flex-row-reverse'}`}>
                     <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
