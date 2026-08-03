@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { AvaliacaoExperienciaTab } from '@/components/rh/AvaliacaoExperienciaTab'
 import {
   Target,
   BookOpen,
@@ -102,12 +103,31 @@ function progressColor(p: number) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-const TAB_BY_QUERY: Record<string, number> = { avaliacao: 0, '9box': 1, metas: 2, pdi: 3, treinamentos: 4 }
-// competencias, experiencia e performance ainda não têm tela própria — o
-// menu promete 8 sub-telas, só 5 existem de verdade.
+const TABS = [
+  'Avaliação de Desempenho',
+  'Avaliação de Experiência',
+  'Matriz 9-Box',
+  'Metas / OKRs',
+  'PDI',
+  'Treinamentos',
+]
+
+// O menu lateral aponta 8 valores de ?tab= para esta página. Seis têm aba real
+// — 'experiencia' passou a ter com a Avaliação de Experiência (45/90 dias).
+const TAB_BY_QUERY: Record<string, number> = {
+  avaliacao:    0,
+  experiencia:  1,
+  '9box':       2,
+  metas:        3,
+  pdi:          4,
+  treinamentos: 5,
+}
+
+// 'competencias' e 'performance' seguem sem tela própria. Mostram aviso honesto
+// em vez de cair silenciosamente na aba de Avaliação de Desempenho — mandar
+// para a "aba mais próxima" faz o menu parecer entregar algo que não existe.
 const NO_CONTENT_LABEL: Record<string, string> = {
   competencias: 'Competências',
-  experiencia: 'Avaliação de Experiência',
   performance: 'Análise de Performance',
 }
 
@@ -120,8 +140,6 @@ export default function PerformancePage() {
   useEffect(() => {
     if (urlTab && urlTab in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[urlTab])
   }, [urlTab])
-
-  const TABS = ['Avaliação de Desempenho', 'Matriz 9-Box', 'Metas / OKRs', 'PDI', 'Treinamentos']
 
   // Build 9-box grid: 3x3 matrix, rows = potencial (2→0 top-to-bottom), cols = performance (0→2)
   // pot=2: top row | pot=1: mid row | pot=0: bottom row
@@ -185,7 +203,9 @@ export default function PerformancePage() {
                 <CardTitle>Avaliação de Desempenho (AVD) — Ciclo Q3 2026</CardTitle>
                 <p className="mt-1 text-xs text-neutral-500">Critérios: Autoavaliação, Avaliação do Gestor, Avaliação de Pares</p>
               </div>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Avaliação ainda não está conectado ao banco de dados.')}>Nova Avaliação</Button>
+              {/* AVD é o ciclo trimestral (autoavaliação/gestor/pares) — instrumento
+                  diferente da Avaliação de Experiência, que tem aba própria. */}
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('O ciclo de AVD ainda não está conectado ao banco de dados.\n\nPara avaliar o período de experiência (45/90 dias), use a aba "Avaliação de Experiência".')}>Nova Avaliação</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -227,8 +247,11 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 1 — Matriz 9-Box */}
-        {activeTab === 1 && (
+        {/* Tab 1 — Avaliação de Experiência (45 / 90 dias) */}
+        {activeTab === 1 && <AvaliacaoExperienciaTab />}
+
+        {/* Tab 2 — Matriz 9-Box */}
+        {activeTab === 2 && (
           <Card theme="light">
             <CardHeader className="border-b border-neutral-200 pb-4">
               <CardTitle>Matriz 9-Box — Performance × Potencial</CardTitle>
@@ -285,8 +308,8 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 2 — Metas / OKRs */}
-        {activeTab === 2 && (
+        {/* Tab 3 — Metas / OKRs */}
+        {activeTab === 3 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Gestão de Metas / OKRs — Q3 2026</CardTitle>
@@ -321,8 +344,8 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 3 — PDI */}
-        {activeTab === 3 && (
+        {/* Tab 4 — PDI */}
+        {activeTab === 4 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -364,8 +387,8 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 4 — Treinamentos */}
-        {activeTab === 4 && (
+        {/* Tab 5 — Treinamentos */}
+        {activeTab === 5 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Treinamentos — Ciclo 2026</CardTitle>
