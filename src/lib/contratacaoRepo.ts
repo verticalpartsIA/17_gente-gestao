@@ -17,7 +17,9 @@
  *
  * Pipeline de candidatos: só existe atrelado a uma vaga já aprovada — o RLS
  * bloqueia inserir candidato numa vaga ainda aguardando_aprovacao. Quando um
- * candidato chega em 'contratado', a vaga fecha sozinha (trigger no banco).
+ * candidato chega em 'contratado', a vaga fecha sozinha (trigger no banco) —
+ * e a Admissão Digital nasce sozinha junto, com o checklist padrão de
+ * documentos (issue #20 — antes era mock).
  *
  * Não confundir com o VP Requisições (sistema de compras — projeto
  * Supabase diferente, domínio diferente).
@@ -424,4 +426,81 @@ export async function atualizarEntrevista(
   if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
   const { error } = await db.from('contratacao_entrevistas').update(ajustes).eq('id', entrevistaId)
   if (error) throw new Error(`Não foi possível atualizar a entrevista: ${error.message}`)
+}
+
+// ── Admissão Digital ─────────────────────────────────────────────────────────
+// Nasce sozinha (trigger no banco) quando um candidato vira 'contratado' —
+// já com o checklist padrão de 12 documentos, tudo pendente.
+
+export interface Admissao {
+  id: string
+  candidato_id: string
+  vaga_id: string
+  contrato_assinado: boolean
+  contrato_assinado_em: string | null
+  contrato_assinado_por: string | null
+  created_at: string
+  updated_at: string
+  candidato?: { nome: string } | null
+  vaga?: { titulo_cargo: string; ticket_number: string } | null
+}
+
+export interface AdmissaoDocumento {
+  id: string
+  admissao_id: string
+  nome: string
+  entregue: boolean
+  entregue_em: string | null
+  entregue_por: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Admissões visíveis: RH vê todas, gestor só as das próprias vagas (RLS). */
+export async function listarAdmissoes(): Promise<Admissao[]> {
+  if (isMockMode) return []
+  const { data, error } = await db
+    .from('contratacao_admissoes')
+    .select('*, candidato:contratacao_candidatos(nome), vaga:contratacao_vagas(titulo_cargo, ticket_number)')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`Não foi possível carregar as admissões: ${error.message}`)
+  return (data ?? []) as Admissao[]
+}
+
+export async function listarDocumentosAdmissao(admissaoId: string): Promise<AdmissaoDocumento[]> {
+  if (isMockMode) return []
+  const { data, error } = await db
+    .from('contratacao_admissao_documentos')
+    .select('*')
+    .eq('admissao_id', admissaoId)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(`Não foi possível carregar os documentos: ${error.message}`)
+  return (data ?? []) as AdmissaoDocumento[]
+}
+
+/** Documentos de várias admissões de uma vez — evita N+1 ao montar a lista. */
+export async function listarDocumentosPorAdmissoes(admissaoIds: string[]): Promise<AdmissaoDocumento[]> {
+  if (isMockMode || admissaoIds.length === 0) return []
+  const { data, error } = await db
+    .from('contratacao_admissao_documentos')
+    .select('*')
+    .in('admissao_id', admissaoIds)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(`Não foi possível carregar os documentos: ${error.message}`)
+  return (data ?? []) as AdmissaoDocumento[]
+}
+
+export async function marcarDocumento(documentoId: string, entregue: boolean): Promise<void> {
+  if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
+  const { error } = await db.from('contratacao_admissao_documentos').update({ entregue }).eq('id', documentoId)
+  if (error) throw new Error(`Não foi possível atualizar o documento: ${error.message}`)
+}
+
+export async function marcarContratoAssinado(admissaoId: string, assinado: boolean): Promise<void> {
+  if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
+  const { error } = await db
+    .from('contratacao_admissoes')
+    .update({ contrato_assinado: assinado })
+    .eq('id', admissaoId)
+  if (error) throw new Error(`Não foi possível atualizar o contrato: ${error.message}`)
 }
