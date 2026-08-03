@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { useAuth } from '@/lib/auth'
 import { NovaRequisicaoVagaModal } from '@/components/rh/NovaRequisicaoVagaModal'
+import { NovoCandidatoModal } from '@/components/rh/NovoCandidatoModal'
+import { NovaEntrevistaModal } from '@/components/rh/NovaEntrevistaModal'
 import {
   listarVagas,
   listarAprovacoes,
@@ -17,9 +19,27 @@ import {
   avancarStatus,
   ehAprovadorExecutivo,
   persistenciaDisponivel,
+  listarCandidatos,
+  listarEntrevistas,
+  atualizarEtapaCandidato,
+  atualizarEntrevista,
+  vagaAceitaCandidatos,
+  ETAPAS_PIPELINE,
+  ETAPA_LABEL,
+  ENTREVISTA_TIPO_LABEL,
+  listarAdmissoes,
+  listarDocumentosPorAdmissoes,
+  marcarDocumento,
+  marcarContratoAssinado,
   type Vaga,
   type Aprovacao,
   type VagaStatus,
+  type Candidato,
+  type CandidatoEtapa,
+  type Entrevista,
+  type EntrevistaStatus,
+  type Admissao,
+  type AdmissaoDocumento,
 } from '@/lib/contratacaoRepo'
 import {
   Briefcase,
@@ -36,6 +56,7 @@ import {
   Send,
   Loader2,
   AlertTriangle,
+  UserPlus,
 } from 'lucide-react'
 
 // ── Requisições — Kanban (Etapas 1-3, dados reais) ───────────────────────────
@@ -59,23 +80,9 @@ const PROXIMA_ETAPA: Partial<Record<VagaStatus, VagaStatus>> = {
   em_pipeline: 'concluida',
 }
 
-const PIPELINE_STAGES = ['Triagem', 'Entrevista — RH', 'Entrevista — Gestor', 'Proposta Enviada', 'Contratado']
-
-interface Candidate {
-  initials: string
-  name: string
-  fonte: string
-  score: number
-  stage: string
-  req: string
-}
-
-// Pipeline de candidatos e comunicações ainda não têm integração real com
-// nenhum sistema de recrutamento/WhatsApp/e-mail — em vez de simular pessoas
-// e conversas fictícias (issue #19), as listas ficam vazias até existir a
-// integração de verdade.
-const CANDIDATOS: Candidate[] = []
-
+// Comunicações (WhatsApp/e-mail) ainda não têm integração real — em vez de
+// simular conversas fictícias (issue #19), a lista fica vazia até existir a
+// central de roteamento de WhatsApp (ver desenho na sessão).
 interface Comunicacao {
   tipo: 'whatsapp' | 'email'
   de: string
@@ -85,63 +92,6 @@ interface Comunicacao {
 }
 
 const COMUNICACOES: Comunicacao[] = []
-
-interface Entrevista {
-  data: string
-  candidato: string
-  tipo: string
-  entrevistador: string
-  hora: string
-}
-
-const ENTREVISTAS: Entrevista[] = []
-
-interface AdmissaoDoc {
-  nome: string
-  status: boolean
-}
-
-interface Admissao {
-  id: string
-  initials: string
-  name: string
-  cargo: string
-  docs: AdmissaoDoc[]
-  assinado: boolean
-}
-
-const ADMISSOES: Admissao[] = [
-  {
-    id: 'ADM-001', initials: 'JF', name: 'João Figueiredo', cargo: 'Aux. de Logística', assinado: false,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: false },
-      { nome: 'Foto 3x4', status: false }, { nome: 'ASO — Exame admissional', status: false },
-      { nome: 'Dados bancários', status: false }, { nome: 'Formulário pré-admissional', status: false },
-    ]
-  },
-  {
-    id: 'ADM-002', initials: 'BN', name: 'Beatriz Nunes', cargo: 'Assistente Financeiro', assinado: true,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: true },
-      { nome: 'Foto 3x4', status: true }, { nome: 'ASO — Exame admissional', status: true },
-      { nome: 'Dados bancários', status: true }, { nome: 'Formulário pré-admissional', status: false },
-    ]
-  },
-  {
-    id: 'ADM-003', initials: 'RT', name: 'Rafael Teixeira', cargo: 'Assistente Financeiro', assinado: true,
-    docs: [
-      { nome: 'RG', status: true }, { nome: 'CPF', status: true }, { nome: 'PIS/PASEP', status: true },
-      { nome: 'Comprovante de residência', status: true }, { nome: 'Certidão de nascimento/casamento', status: true },
-      { nome: 'CTPS', status: true }, { nome: 'Título de eleitor', status: true }, { nome: 'Certificado reservista', status: true },
-      { nome: 'Foto 3x4', status: true }, { nome: 'ASO — Exame admissional', status: true },
-      { nome: 'Dados bancários', status: true }, { nome: 'Formulário pré-admissional', status: true },
-    ]
-  },
-]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -169,17 +119,37 @@ function dataLabel(iso: string | null) {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
-function stageBadge(stage: string) {
-  if (stage === 'Proposta Enviada') return <Badge variant="success">{stage}</Badge>
-  if (stage === 'Contratado')       return <Badge variant="success">{stage}</Badge>
-  if (stage === 'Triagem')          return <Badge variant="default">{stage}</Badge>
-  return <Badge variant="info">{stage}</Badge>
+function etapaCandidatoBadge(etapa: CandidatoEtapa) {
+  if (etapa === 'contratado' || etapa === 'proposta_enviada') return <Badge variant="success">{ETAPA_LABEL[etapa]}</Badge>
+  if (etapa === 'reprovado') return <Badge variant="danger">{ETAPA_LABEL[etapa]}</Badge>
+  if (etapa === 'triagem') return <Badge variant="default">{ETAPA_LABEL[etapa]}</Badge>
+  return <Badge variant="info">{ETAPA_LABEL[etapa]}</Badge>
+}
+
+function entrevistaStatusBadge(status: EntrevistaStatus) {
+  if (status === 'realizada') return <Badge variant="success">Realizada</Badge>
+  if (status === 'cancelada') return <Badge variant="danger">Cancelada</Badge>
+  return <Badge variant="info">Agendada</Badge>
 }
 
 function scoreColor(score: number) {
   if (score >= 85) return 'text-green-600'
   if (score >= 70) return 'text-yellow-600'
   return 'text-red-600'
+}
+
+function iniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/)
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase()
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+}
+
+function dataHoraLabel(iso: string) {
+  const d = new Date(iso)
+  return {
+    dia: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+    hora: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+  }
 }
 
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -196,7 +166,6 @@ export default function AtracaoPage() {
   const [erroLista, setErroLista] = useState<string | null>(null)
 
   const [selectedReq, setSelectedReq] = useState<Vaga | null>(null)
-  const [selectedAdm, setSelectedAdm] = useState<Admissao | null>(null)
 
   const [aprovacoes, setAprovacoes] = useState<Aprovacao[]>([])
   const [mostrarFormRecusa, setMostrarFormRecusa] = useState(false)
@@ -205,6 +174,24 @@ export default function AtracaoPage() {
   const [textoReenvio, setTextoReenvio] = useState('')
   const [acaoCarregando, setAcaoCarregando] = useState(false)
   const [acaoErro, setAcaoErro] = useState<string | null>(null)
+
+  // Pipeline de candidatos
+  const [vagaSelecionadaId, setVagaSelecionadaId] = useState<string | null>(null)
+  const [candidatos, setCandidatos] = useState<Candidato[]>([])
+  const [entrevistas, setEntrevistas] = useState<Entrevista[]>([])
+  const [carregandoPipeline, setCarregandoPipeline] = useState(false)
+  const [erroPipeline, setErroPipeline] = useState<string | null>(null)
+  const [pipelineAcaoErro, setPipelineAcaoErro] = useState<string | null>(null)
+  const [modalCandidatoAberto, setModalCandidatoAberto] = useState(false)
+  const [entrevistaAlvo, setEntrevistaAlvo] = useState<Candidato | null>(null)
+
+  // Admissão Digital
+  const [admissoes, setAdmissoes] = useState<Admissao[]>([])
+  const [documentosPorAdmissao, setDocumentosPorAdmissao] = useState<Record<string, AdmissaoDocumento[]>>({})
+  const [carregandoAdmissoes, setCarregandoAdmissoes] = useState(false)
+  const [erroAdmissoes, setErroAdmissoes] = useState<string | null>(null)
+  const [selectedAdm, setSelectedAdm] = useState<Admissao | null>(null)
+  const [admissaoAcaoErro, setAdmissaoAcaoErro] = useState<string | null>(null)
 
   const TABS = ['Requisições (Kanban)', 'Pipeline de Candidatos', 'Comunicações', 'Admissão Digital']
 
@@ -329,6 +316,109 @@ export default function AtracaoPage() {
     }
   }
 
+  // ── Pipeline de candidatos ─────────────────────────────────────────────────
+
+  const vagasElegiveisPipeline = useMemo(
+    () => vagas.filter(v => vagaAceitaCandidatos(v.status)),
+    [vagas],
+  )
+  const vagaSelecionada = vagasElegiveisPipeline.find(v => v.id === vagaSelecionadaId) ?? null
+
+  useEffect(() => {
+    if (vagaSelecionadaId && vagasElegiveisPipeline.some(v => v.id === vagaSelecionadaId)) return
+    setVagaSelecionadaId(vagasElegiveisPipeline[0]?.id ?? null)
+  }, [vagasElegiveisPipeline, vagaSelecionadaId])
+
+  const carregarPipeline = useCallback(() => {
+    if (!vagaSelecionadaId || !persistenciaDisponivel()) {
+      setCandidatos([])
+      setEntrevistas([])
+      return
+    }
+    setCarregandoPipeline(true)
+    setErroPipeline(null)
+    Promise.all([listarCandidatos(vagaSelecionadaId), listarEntrevistas(vagaSelecionadaId)])
+      .then(([cands, ents]) => { setCandidatos(cands); setEntrevistas(ents) })
+      .catch(e => setErroPipeline(e instanceof Error ? e.message : 'Erro ao carregar.'))
+      .finally(() => setCarregandoPipeline(false))
+  }, [vagaSelecionadaId])
+
+  useEffect(carregarPipeline, [carregarPipeline])
+
+  async function handleAvancarCandidato(candidato: Candidato) {
+    const idx = ETAPAS_PIPELINE.indexOf(candidato.etapa)
+    if (idx === -1 || idx === ETAPAS_PIPELINE.length - 1) return
+    setPipelineAcaoErro(null)
+    try {
+      await atualizarEtapaCandidato(candidato.id, ETAPAS_PIPELINE[idx + 1])
+      carregarPipeline()
+    } catch (e) {
+      setPipelineAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  async function handleReprovarCandidato(candidato: Candidato) {
+    if (!window.confirm(`Marcar ${candidato.nome} como reprovado?`)) return
+    setPipelineAcaoErro(null)
+    try {
+      await atualizarEtapaCandidato(candidato.id, 'reprovado')
+      carregarPipeline()
+    } catch (e) {
+      setPipelineAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  async function handleMarcarEntrevista(entrevista: Entrevista, status: EntrevistaStatus) {
+    setPipelineAcaoErro(null)
+    try {
+      await atualizarEntrevista(entrevista.id, { status })
+      carregarPipeline()
+    } catch (e) {
+      setPipelineAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  // ── Admissão Digital ───────────────────────────────────────────────────────
+
+  const carregarAdmissoes = useCallback(() => {
+    if (!persistenciaDisponivel()) return
+    setCarregandoAdmissoes(true)
+    setErroAdmissoes(null)
+    listarAdmissoes()
+      .then(async lista => {
+        setAdmissoes(lista)
+        setSelectedAdm(sel => (sel ? lista.find(a => a.id === sel.id) ?? null : null))
+        const docs = await listarDocumentosPorAdmissoes(lista.map(a => a.id))
+        const agrupado: Record<string, AdmissaoDocumento[]> = {}
+        for (const d of docs) (agrupado[d.admissao_id] ??= []).push(d)
+        setDocumentosPorAdmissao(agrupado)
+      })
+      .catch(e => setErroAdmissoes(e instanceof Error ? e.message : 'Erro ao carregar.'))
+      .finally(() => setCarregandoAdmissoes(false))
+  }, [])
+
+  useEffect(carregarAdmissoes, [carregarAdmissoes])
+
+  async function handleToggleDocumento(doc: AdmissaoDocumento) {
+    setAdmissaoAcaoErro(null)
+    try {
+      await marcarDocumento(doc.id, !doc.entregue)
+      carregarAdmissoes()
+    } catch (e) {
+      setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  async function handleToggleContrato(adm: Admissao) {
+    setAdmissaoAcaoErro(null)
+    try {
+      await marcarContratoAssinado(adm.id, !adm.contrato_assinado)
+      carregarAdmissoes()
+    } catch (e) {
+      setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
   const kpiAberto = vagas.filter(v => v.status !== 'concluida' && v.status !== 'cancelada').length
   const kpiTriagem = vagas.filter(v => v.status === 'em_triagem').length
   const kpiAprovacao = vagas.filter(v => v.status === 'aguardando_aprovacao').length
@@ -344,7 +434,7 @@ export default function AtracaoPage() {
           <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" />
           <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value={String(kpiTriagem)}  sub="Aguardando análise" />
           <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value={String(kpiAprovacao)} sub="CEO / Diretoria" />
-          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub={`${CANDIDATOS.length} candidatos ativos`} />
+          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub="Candidatos ativos" />
         </div>
 
         {/* Tabs */}
@@ -456,106 +546,178 @@ export default function AtracaoPage() {
         {/* Tab 1 — Pipeline de Candidatos */}
         {activeTab === 1 && (
           <div className="space-y-6">
-            {/* Pipeline stages */}
-            <div className="flex items-center gap-0 overflow-x-auto">
-              {PIPELINE_STAGES.map((stage, i) => (
-                <div key={stage} className="flex items-center">
-                  <div className={`shrink-0 rounded px-3 py-2 text-xs font-bold ${
-                    i === 0 ? 'bg-neutral-200 text-neutral-700' :
-                    i === 1 ? 'bg-blue-100 text-blue-700' :
-                    i === 2 ? 'bg-yellow-100 text-yellow-700' :
-                    i === 3 ? 'bg-purple-100 text-purple-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    {stage}
-                    <span className="ml-1 opacity-60">
-                      ({CANDIDATOS.filter(c => c.stage === stage).length})
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex-1 min-w-[240px]">
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                  Vaga
+                </span>
+                <select
+                  value={vagaSelecionadaId ?? ''}
+                  onChange={e => setVagaSelecionadaId(e.target.value || null)}
+                  disabled={vagasElegiveisPipeline.length === 0}
+                  className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:bg-neutral-50 disabled:text-neutral-400"
+                >
+                  {vagasElegiveisPipeline.length === 0 && <option value="">Nenhuma vaga aprovada ainda</option>}
+                  {vagasElegiveisPipeline.map(v => (
+                    <option key={v.id} value={v.id}>{v.ticket_number} — {v.titulo_cargo} ({STATUS_LABEL[v.status]})</option>
+                  ))}
+                </select>
+              </label>
+              {carregandoPipeline && <Loader2 className="mt-5 h-4 w-4 animate-spin text-neutral-400" />}
+            </div>
+
+            {erroPipeline && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{erroPipeline}</span>
+              </div>
+            )}
+            {pipelineAcaoErro && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{pipelineAcaoErro}</span>
+              </div>
+            )}
+
+            {vagaSelecionada && (
+              <>
+                {/* Pipeline stages */}
+                <div className="flex items-center gap-0 overflow-x-auto">
+                  {ETAPAS_PIPELINE.map((etapa, i) => (
+                    <div key={etapa} className="flex items-center">
+                      <div className={`shrink-0 rounded px-3 py-2 text-xs font-bold ${
+                        i === 0 ? 'bg-neutral-200 text-neutral-700' :
+                        i === 1 ? 'bg-blue-100 text-blue-700' :
+                        i === 2 ? 'bg-yellow-100 text-yellow-700' :
+                        i === 3 ? 'bg-purple-100 text-purple-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {ETAPA_LABEL[etapa]}
+                        <span className="ml-1 opacity-60">
+                          ({candidatos.filter(c => c.etapa === etapa).length})
+                        </span>
+                      </div>
+                      {i < ETAPAS_PIPELINE.length - 1 && (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-neutral-300" />
+                      )}
+                    </div>
+                  ))}
+                  {candidatos.some(c => c.etapa === 'reprovado') && (
+                    <span className="ml-3 shrink-0 rounded bg-red-100 px-3 py-2 text-xs font-bold text-red-700">
+                      Reprovados ({candidatos.filter(c => c.etapa === 'reprovado').length})
                     </span>
-                  </div>
-                  {i < PIPELINE_STAGES.length - 1 && (
-                    <ChevronRight className="h-4 w-4 shrink-0 text-neutral-300" />
                   )}
                 </div>
-              ))}
-            </div>
 
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Pipeline de candidatos ainda não está integrado a um sistema de recrutamento — só a Requisição e a Aprovação Executiva (aba Kanban) já gravam no banco.</span>
-            </div>
+                {/* Tabela candidatos */}
+                <Card theme="light" noPadding>
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
+                    <CardTitle>Candidatos — {vagaSelecionada.ticket_number} ({vagaSelecionada.titulo_cargo})</CardTitle>
+                    <Button size="sm" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setModalCandidatoAberto(true)}>
+                      Adicionar Candidato
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-neutral-100 bg-neutral-50">
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Candidato</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Fonte</th>
+                          <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-neutral-500">Score</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Etapa</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-100">
+                        {candidatos.map(c => (
+                          <tr key={c.id} className="hover:bg-neutral-50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-black">
+                                  {iniciais(c.nome)}
+                                </div>
+                                <span className="font-medium text-neutral-900">{c.nome}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-neutral-600">{c.fonte ?? '—'}</td>
+                            <td className="px-4 py-3 text-center">
+                              {c.score !== null
+                                ? <span className={`text-lg font-black ${scoreColor(c.score)}`}>{c.score}%</span>
+                                : <span className="text-neutral-400">—</span>}
+                            </td>
+                            <td className="px-4 py-3">{etapaCandidatoBadge(c.etapa)}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1.5">
+                                {souAdministrador && c.etapa !== 'contratado' && c.etapa !== 'reprovado' && (
+                                  <>
+                                    <Button variant="outline" size="sm" onClick={() => handleAvancarCandidato(c)}>Avançar Etapa</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setEntrevistaAlvo(c)}>Agendar Entrevista</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => handleReprovarCandidato(c)}>Reprovar</Button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {candidatos.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-xs text-neutral-400">
+                              Nenhum candidato ainda nesta vaga.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
 
-            {/* Tabela candidatos */}
-            <Card theme="light" noPadding>
-              <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
-                <CardTitle>Candidatos em Pipeline</CardTitle>
-                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Adicionar Candidato ainda não está conectado ao banco de dados.')}>Adicionar Candidato</Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-neutral-100 bg-neutral-50">
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Candidato</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Fonte</th>
-                      <th className="px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-neutral-500">Score IA</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Etapa</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-500">Ação</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {CANDIDATOS.length === 0 && (
-                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum candidato em pipeline ainda — este módulo ainda não está integrado a um sistema de recrutamento.</td></tr>
-                    )}
-                    {CANDIDATOS.map((c, i) => (
-                      <tr key={i} className="hover:bg-neutral-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-black">
-                              {c.initials}
+                {/* Entrevistas agendadas */}
+                <Card theme="light" noPadding>
+                  <CardHeader className="border-b border-neutral-200 px-5 pt-5 pb-4">
+                    <CardTitle>Entrevistas — {vagaSelecionada.ticket_number}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="divide-y divide-neutral-100 px-5">
+                    {entrevistas.map(e => {
+                      const cand = candidatos.find(c => c.id === e.candidato_id)
+                      const { dia, hora } = dataHoraLabel(e.data_hora)
+                      return (
+                        <div key={e.id} className="py-4 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-4">
+                            <div className="rounded-lg border border-neutral-200 p-2 text-center min-w-[52px]">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">{hora}</p>
+                              <p className="text-lg font-black text-neutral-900">{dia}</p>
                             </div>
-                            <span className="font-medium text-neutral-900">{c.name}</span>
+                            <div>
+                              <p className="font-semibold text-neutral-900">{cand?.nome ?? 'Candidato removido'}</p>
+                              <p className="text-xs text-neutral-500">
+                                {ENTREVISTA_TIPO_LABEL[e.tipo]} · Entrevistador: {e.entrevistador_nome ?? '—'}
+                                {e.local_ou_link ? ` · ${e.local_ou_link}` : ''}
+                              </p>
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-600">{c.fonte}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`text-lg font-black ${scoreColor(c.score)}`}>{c.score}%</span>
-                        </td>
-                        <td className="px-4 py-3">{stageBadge(c.stage)}</td>
-                        <td className="px-4 py-3">
-                          <Button variant="outline" size="sm">Avançar Etapa</Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
+                          <div className="flex items-center gap-2">
+                            {entrevistaStatusBadge(e.status)}
+                            {e.status === 'agendada' && souAdministrador && (
+                              <>
+                                <Button variant="outline" size="sm" onClick={() => handleMarcarEntrevista(e, 'realizada')}>Realizada</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleMarcarEntrevista(e, 'cancelada')}>Cancelar</Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {entrevistas.length === 0 && (
+                      <p className="py-6 text-center text-xs text-neutral-400">Nenhuma entrevista agendada.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
-            {/* Entrevistas agendadas */}
-            <Card theme="light" noPadding>
-              <CardHeader className="border-b border-neutral-200 px-5 pt-5 pb-4">
-                <CardTitle>Entrevistas Agendadas</CardTitle>
-              </CardHeader>
-              <CardContent className="divide-y divide-neutral-100 px-5">
-                {ENTREVISTAS.length === 0 && (
-                  <div className="py-8 text-center text-sm text-neutral-400">Nenhuma entrevista agendada ainda.</div>
-                )}
-                {ENTREVISTAS.map((e, i) => (
-                  <div key={i} className="py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="rounded-lg border border-neutral-200 p-2 text-center min-w-[52px]">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Jul</p>
-                        <p className="text-lg font-black text-neutral-900">{e.data.split('/')[0]}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-neutral-900">{e.candidato}</p>
-                        <p className="text-xs text-neutral-500">{e.tipo} · Entrevistador: {e.entrevistador} · {e.hora}</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => alert('Detalhes ainda não estão conectados ao banco de dados.')}>Ver Detalhes</Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            {!vagaSelecionada && vagasElegiveisPipeline.length === 0 && (
+              <div className="rounded-lg border border-dashed border-neutral-200 p-8 text-center text-sm text-neutral-500">
+                Nenhuma vaga aprovada ainda — o pipeline libera assim que o CEO aprovar uma requisição.
+              </div>
+            )}
           </div>
         )}
 
@@ -564,7 +726,7 @@ export default function AtracaoPage() {
           <div className="space-y-4">
             <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>WhatsApp ainda não está conectado — depende da central de roteamento compartilhada com o Pós-Venda.</span>
+              <span>WhatsApp ainda não está conectado — depende da central de roteamento compartilhada com o Pós-Venda. Esta aba segue com dados de demonstração.</span>
             </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Candidatos lista */}
@@ -573,24 +735,26 @@ export default function AtracaoPage() {
                   <CardTitle>Candidatos</CardTitle>
                 </CardHeader>
                 <CardContent className="divide-y divide-neutral-100">
-                  {CANDIDATOS.length === 0 && (
-                    <div className="py-8 text-center text-sm text-neutral-400">Nenhum candidato cadastrado ainda.</div>
-                  )}
-                  {CANDIDATOS.map((c, i) => (
-                    <div key={i} className="flex items-center gap-3 py-3 cursor-pointer hover:bg-neutral-50 -mx-4 px-4">
+                  {candidatos.map(c => (
+                    <div key={c.id} className="flex items-center gap-3 py-3 cursor-pointer hover:bg-neutral-50 -mx-4 px-4">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-black">
-                        {c.initials}
+                        {iniciais(c.nome)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-neutral-900 truncate">{c.name}</p>
-                        <p className="text-xs text-neutral-500 truncate">{c.stage}</p>
+                        <p className="text-sm font-medium text-neutral-900 truncate">{c.nome}</p>
+                        <p className="text-xs text-neutral-500 truncate">{ETAPA_LABEL[c.etapa]}</p>
                       </div>
                     </div>
                   ))}
+                  {candidatos.length === 0 && (
+                    <p className="py-6 text-center text-xs text-neutral-400">
+                      Nenhum candidato na vaga selecionada na aba Pipeline.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Feed de comunicações */}
+              {/* Feed de comunicações — sem integração real ainda (issue #19: nada de dado fabricado) */}
               <Card theme="light" noPadding className="lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
                   <CardTitle>Histórico de Comunicações</CardTitle>
@@ -628,32 +792,63 @@ export default function AtracaoPage() {
         {/* Tab 3 — Admissão Digital */}
         {activeTab === 3 && (
           <div className="space-y-4">
-            {ADMISSOES.map(adm => {
-              const concluidos = adm.docs.filter(d => d.status).length
-              const total = adm.docs.length
-              const pct = Math.round((concluidos / total) * 100)
+            {carregandoAdmissoes && <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />}
+            {erroAdmissoes && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{erroAdmissoes}</span>
+              </div>
+            )}
+            {admissaoAcaoErro && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span>{admissaoAcaoErro}</span>
+              </div>
+            )}
+
+            {admissoes.length === 0 && !carregandoAdmissoes && (
+              <div className="rounded-lg border border-dashed border-neutral-200 p-8 text-center text-sm text-neutral-500">
+                Nenhuma admissão ainda — aparece aqui automaticamente quando um candidato é marcado como "Contratado" no Pipeline.
+              </div>
+            )}
+
+            {admissoes.map(adm => {
+              const docs = documentosPorAdmissao[adm.id] ?? []
+              const concluidos = docs.filter(d => d.entregue).length
+              const total = docs.length
+              const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0
+              const nome = adm.candidato?.nome ?? 'Candidato removido'
               return (
                 <Card key={adm.id} theme="light">
                   <CardContent className="pt-5 pb-5">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-black">
-                        {adm.initials}
+                        {iniciais(nome)}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold text-neutral-900">{adm.name}</p>
-                            <p className="text-xs text-neutral-500">{adm.cargo} · {adm.id}</p>
+                            <p className="font-semibold text-neutral-900">{nome}</p>
+                            <p className="text-xs text-neutral-500">
+                              {adm.vaga?.titulo_cargo ?? '—'} · {adm.vaga?.ticket_number ?? '—'}
+                            </p>
                           </div>
                           <div className="flex items-center gap-3">
-                            {adm.assinado
+                            {adm.contrato_assinado
                               ? <Badge variant="success">Contrato Assinado</Badge>
                               : <Badge variant="warning">Aguardando Docs.</Badge>
                             }
+                            {souAdministrador && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleContrato(adm)}
+                              >
+                                {adm.contrato_assinado ? 'Desfazer Assinatura' : 'Marcar Assinado'}
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedAdm(adm === selectedAdm ? null : adm)}
+                              onClick={() => setSelectedAdm(adm.id === selectedAdm?.id ? null : adm)}
                             >
                               {selectedAdm?.id === adm.id ? 'Fechar' : 'Ver Checklist'}
                             </Button>
@@ -674,13 +869,19 @@ export default function AtracaoPage() {
                     {/* Expanded checklist */}
                     {selectedAdm?.id === adm.id && (
                       <div className="mt-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
-                        {adm.docs.map((doc, i) => (
-                          <div key={i} className={`flex items-center gap-2 text-sm rounded p-2 ${
-                            doc.status ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
-                          }`}>
-                            <span className="text-base">{doc.status ? '✓' : '○'}</span>
+                        {docs.map(doc => (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            disabled={!souAdministrador}
+                            onClick={() => handleToggleDocumento(doc)}
+                            className={`flex items-center gap-2 text-left text-sm rounded p-2 transition-colors ${
+                              doc.entregue ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
+                            } ${souAdministrador ? 'hover:brightness-95 cursor-pointer' : 'cursor-default'}`}
+                          >
+                            <span className="text-base">{doc.entregue ? '✓' : '○'}</span>
                             {doc.nome}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -924,6 +1125,24 @@ export default function AtracaoPage() {
         open={modalAberto}
         onClose={() => setModalAberto(false)}
         onSalvo={carregar}
+      />
+
+      <NovoCandidatoModal
+        open={modalCandidatoAberto}
+        vagaId={vagaSelecionadaId}
+        criadoPor={profile?.id ?? ''}
+        onClose={() => setModalCandidatoAberto(false)}
+        onSalvo={carregarPipeline}
+      />
+
+      <NovaEntrevistaModal
+        open={entrevistaAlvo !== null}
+        candidatoId={entrevistaAlvo?.id ?? null}
+        candidatoNome={entrevistaAlvo?.nome ?? ''}
+        vagaId={vagaSelecionadaId}
+        criadoPor={profile?.id ?? ''}
+        onClose={() => setEntrevistaAlvo(null)}
+        onSalvo={carregarPipeline}
       />
 
     </AppShell>
