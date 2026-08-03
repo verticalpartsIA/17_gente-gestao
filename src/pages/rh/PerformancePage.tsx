@@ -19,57 +19,15 @@ import {
 
 // ── Data from HTML prototype ──────────────────────────────────────────────────
 
-const AVD_DATA = [
-  { initials: 'AP', name: 'Ana Paula Rocha',  dept: 'Comercial',          autoav: 4.8, gestor: 4.5, pares: 4.7, media: 4.67, status: 'Concluído'    },
-  { initials: 'MC', name: 'Mariana Costa',    dept: 'Consultoria Técnica', autoav: 4.9, gestor: 4.8, pares: 5.0, media: 4.90, status: 'Concluído'    },
-  { initials: 'CM', name: 'Carlos Mendes',    dept: 'Produção',            autoav: 4.2, gestor: 4.0, pares: 4.3, media: 4.17, status: 'Concluído'    },
-  { initials: 'RF', name: 'Roberto Faria',    dept: 'Adm./Financeiro',     autoav: 4.1, gestor: 4.2, pares: 4.0, media: 4.10, status: 'Concluído'    },
-  { initials: 'FS', name: 'Felipe Santos',    dept: 'Logística',           autoav: 3.8, gestor: 3.5, pares: 4.0, media: 3.77, status: 'Concluído'    },
-  { initials: 'JM', name: 'Juliana Melo',     dept: 'Marketing',           autoav: 4.3, gestor: 4.4, pares: 4.2, media: 4.30, status: 'Concluído'    },
-  { initials: 'BA', name: 'Bruno Almeida',    dept: 'Comercial',           autoav: 3.5, gestor: 3.8, pares: 3.7, media: 3.67, status: 'Em andamento' },
-  { initials: 'DS', name: 'Daniela Souza',    dept: 'Qualidade',           autoav: 4.0, gestor: 4.2, pares: 4.1, media: 4.10, status: 'Concluído'    },
-  { initials: 'EP', name: 'Eduardo Pires',    dept: 'Consultoria Técnica', autoav: null, gestor: null, pares: null, media: null, status: 'Não iniciado' },
-  { initials: 'LC', name: 'Lucas Carvalho',   dept: 'Marketing',           autoav: null, gestor: null, pares: null, media: null, status: 'Não iniciado' },
-]
-
-// 9-Box: [performance][potencial] → 0=low, 1=mid, 2=high
-// Grid positions: row 2=alto potencial, row 1=médio, row 0=baixo
-// Col 0=baixa perf, col 1=media, col 2=alta
-const NINEBOX_CELLS = [
-  { label: 'Alto Potencial',     desc: 'Alta potencial, baixa performance', perf: 0, pot: 2, color: 'bg-blue-50 border-blue-200',    people: ['AP', 'MC'] },
-  { label: 'Estrela',            desc: 'Alta potencial, alta performance',  perf: 2, pot: 2, color: 'bg-green-50 border-green-200',   people: [] },
-  { label: 'Forte Performer',    desc: 'Média potencial, alta performance', perf: 2, pot: 1, color: 'bg-green-50 border-green-200',   people: ['CM', 'JM'] },
-  { label: 'Bruto Diamante',     desc: 'Alta potencial, baixa performance', perf: 0, pot: 1, color: 'bg-yellow-50 border-yellow-200', people: ['RF'] },
-  { label: 'Core',               desc: 'Média potencial, media performance', perf: 1, pot: 1, color: 'bg-neutral-50 border-neutral-200', people: ['FS', 'DS'] },
-  { label: 'Consistente',        desc: 'Baixa potencial, alta performance', perf: 2, pot: 0, color: 'bg-neutral-50 border-neutral-200', people: ['EP'] },
-  { label: 'Risco',              desc: 'Alta potencial, baixa performance', perf: 0, pot: 0, color: 'bg-red-50 border-red-200',       people: ['LC'] },
-  { label: 'Inconsistente',      desc: 'Média potencial, baixa performance',perf: 1, pot: 0, color: 'bg-orange-50 border-orange-200', people: ['BA'] },
-  { label: 'Enigma',             desc: 'Baixa potencial, media performance',perf: 1, pot: 2, color: 'bg-purple-50 border-purple-200', people: [] },
-]
-
-const METAS_OKR = [
-  { area: 'Comercial',  responsavel: 'Ana Paula Rocha', progresso: 78, meta: 'Aumentar receita em 20% no Q3 2026' },
-  { area: 'RH',         responsavel: 'Gelson Simões',   progresso: 60, meta: 'Contratar 5 novos colaboradores até set/26' },
-  { area: 'Produção',   responsavel: 'Carlos Mendes',   progresso: 100,meta: 'Reduzir retrabalho em 15% no trimestre' },
-  { area: 'Marketing',  responsavel: 'Juliana Melo',    progresso: 45, meta: 'Gerar 300 leads qualificados no Q3' },
-  { area: 'Logística',  responsavel: 'Felipe Santos',   progresso: 33, meta: 'Implantar rastreamento em 100% da frota' },
-  { area: 'Qualidade',  responsavel: 'Roberto Lima',    progresso: 88, meta: 'Zero não-conformidades críticas no Q3' },
-]
-
-const PDI_AP = [
-  { titulo: 'Gestão Estratégica (EAD)', descricao: 'Curso online — 40h/mês via plataforma EAD', prazo: '31/08/2026', progresso: 65, status: 'Em andamento' },
-  { titulo: 'Mentoria com CEO',         descricao: 'Sessões quinzenais de 1h com Gelson Simões',  prazo: '—',         progresso: 100, status: 'Concluído'   },
-  { titulo: 'Certificação CRM (HubSpot)',descricao: 'Certificação oficial HubSpot CRM',           prazo: '30/09/2026', progresso: 10, status: 'Não iniciado'},
-  { titulo: 'Workshop de Negociação',   descricao: 'Imersão presencial — São Paulo',              prazo: '15/08/2026', progresso: 40, status: 'Em andamento'},
-]
-
-const TREINAMENTOS = [
-  { nome: 'NR-35 — Trabalho em Altura',      tipo: 'Obrigatório', concluidos: 8,  total: 8,  progresso: 100 },
-  { nome: 'Excel + Power BI para Gestores',  tipo: 'Opcional',    concluidos: 4,  total: 7,  progresso: 57  },
-  { nome: 'Gestão de Conflitos',             tipo: 'Opcional',    concluidos: 6,  total: 11, progresso: 55  },
-  { nome: 'LGPD — Lei Geral de Proteção',   tipo: 'Obrigatório', concluidos: 19, total: 22, progresso: 86  },
-  { nome: 'Primeiros Socorros',              tipo: 'Obrigatório', concluidos: 8,  total: 8,  progresso: 100 },
-]
+// AVD, 9-Box, Metas/OKR, PDI e Treinamentos ainda não têm tabela real no
+// Supabase — inclusive alguns registros fabricados citavam o CEO real
+// (Gelson Simões) em metas/mentorias que ele nunca registrou. Arrays vazios
+// até existir integração de verdade.
+const AVD_DATA: { initials: string; name: string; dept: string; autoav: number | null; gestor: number | null; pares: number | null; media: number | null; status: string }[] = []
+const NINEBOX_CELLS: { label: string; desc: string; perf: number; pot: number; color: string; people: string[] }[] = []
+const METAS_OKR: { area: string; responsavel: string; progresso: number; meta: string }[] = []
+const PDI_AP: { titulo: string; descricao: string; prazo: string; progresso: number; status: string }[] = []
+const TREINAMENTOS: { nome: string; tipo: string; concluidos: number; total: number; progresso: number }[] = []
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -172,10 +130,10 @@ export default function PerformancePage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard icon={ClipboardCheck} color="green"  label="AVALIAÇÕES CONCLUÍDAS" value="18/22" sub="Ciclo Q3 2026" />
-          <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value="6"     sub="OKRs do trimestre" />
-          <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value="9"     sub="Planos de desenvolvimento" />
-          <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value="5"     sub="Programas em andamento" />
+          <KpiCard icon={ClipboardCheck} color="green"  label="AVALIAÇÕES CONCLUÍDAS" value="0" sub="Módulo ainda não integrado" />
+          <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value="0"     sub="Módulo ainda não integrado" />
+          <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value="0"     sub="Módulo ainda não integrado" />
+          <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value="0"     sub="Módulo ainda não integrado" />
         </div>
 
         {/* Tabs */}
@@ -221,6 +179,9 @@ export default function PerformancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
+                  {AVD_DATA.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhuma avaliação registrada ainda.</td></tr>
+                  )}
                   {AVD_DATA.map((row, i) => (
                     <tr key={i} className="hover:bg-neutral-50">
                       <td className="px-4 py-3">
@@ -316,6 +277,9 @@ export default function PerformancePage() {
               <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Meta ainda não está conectado ao banco de dados.')}>Nova Meta</Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
+              {METAS_OKR.length === 0 && (
+                <p className="py-8 text-center text-sm text-neutral-400">Nenhuma meta/OKR cadastrada ainda.</p>
+              )}
               {METAS_OKR.map((m, i) => (
                 <div key={i} className="py-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -349,12 +313,15 @@ export default function PerformancePage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-neutral-900">PDI — Ana Paula Rocha</h3>
-                <p className="text-xs text-neutral-500">Gerente Comercial · Ciclo 2026</p>
+                <h3 className="font-bold text-neutral-900">Planos de Desenvolvimento Individual</h3>
+                <p className="text-xs text-neutral-500">Ciclo 2026</p>
               </div>
               <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Ação ainda não está conectado ao banco de dados.')}>Nova Ação</Button>
             </div>
 
+            {PDI_AP.length === 0 && (
+              <p className="py-8 text-center text-sm text-neutral-400">Nenhum PDI cadastrado ainda.</p>
+            )}
             {PDI_AP.map((item, i) => (
               <Card key={i} theme="light">
                 <CardContent className="pt-4 pb-4">
@@ -395,6 +362,9 @@ export default function PerformancePage() {
               <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Novo Treinamento ainda não está conectado ao banco de dados.')}>Novo Treinamento</Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
+              {TREINAMENTOS.length === 0 && (
+                <p className="py-8 text-center text-sm text-neutral-400">Nenhum treinamento cadastrado ainda.</p>
+              )}
               {TREINAMENTOS.map((t, i) => (
                 <div key={i} className="py-4 space-y-2">
                   <div className="flex items-center justify-between">
