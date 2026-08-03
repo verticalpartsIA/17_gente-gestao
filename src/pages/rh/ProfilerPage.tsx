@@ -1,16 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { useAuth } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
-import { 
-  UserCheck, 
-  Users, 
-  Clock, 
-  TrendingUp, 
+import {
+  UserCheck,
+  Users,
   HelpCircle,
   FileText
 } from 'lucide-react'
@@ -18,6 +17,18 @@ import {
 export default function ProfilerPage() {
   const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState<'empresa' | 'individual'>('empresa')
+  const [activeCount, setActiveCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      const { count } = await (supabase as any)
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+      setActiveCount(count ?? 0)
+    }
+    load()
+  }, [])
 
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="VERTICALPARTS PROFILER — MAPEAMENTO COMPORTAMENTAL">
@@ -47,112 +58,32 @@ export default function ProfilerPage() {
         {/* TAB: PERFIL MÉDIO DA EMPRESA */}
         {activeTab === 'empresa' && (
           <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <KpiCard
                 icon={Users}
                 color="brand"
-                label="COLABORADORES MAPEADOS"
-                value="47 / 47"
-                sub="100% de adesão corporativa"
+                label="COLABORADORES ATIVOS"
+                value={activeCount === null ? '...' : String(activeCount)}
+                sub="Dado real (profiles)"
               />
               <KpiCard
-                icon={Clock}
+                icon={UserCheck}
                 color="green"
-                label="TEMPO MÉDIO DE PERMANÊNCIA"
-                value="832.8 Dias"
-                sub="Alto índice de retenção"
-              />
-              <KpiCard
-                icon={TrendingUp}
-                color="blue"
-                label="PERFIL MÉDIO CORPORATIVO"
-                value="PEC"
-                sub="Planejador · Executor · Comunicador"
+                label="PROFILERS RESPONDIDOS"
+                value="0"
+                sub="Questionário ainda não implementado"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>COMPOSIÇÃO COMPORTAMENTAL DA EQUIPE</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  
-                  <div className="space-y-4">
-                    <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                      <div className="flex justify-between text-xs font-mono font-bold">
-                        <span className="text-primary">PLANEJADOR (P)</span>
-                        <span>26.45%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-surface-elevated h-3">
-                          <div className="bg-primary h-full" style={{ width: '26.45%' }}></div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-fg3 font-sans mt-1">Perfil focado em ritmo constante, estabilidade, processos claros e temperamento calmo.</p>
-                    </div>
-
-                    <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                      <div className="flex justify-between text-xs font-mono font-bold">
-                        <span className="text-danger">EXECUTOR (E)</span>
-                        <span>25.69%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-surface-elevated h-3">
-                          <div className="bg-red/80 h-full" style={{ width: '25.69%' }}></div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-fg3 font-sans mt-1">Perfil focado em resultados rápidos, competitividade, desafios práticos e liderança ativa.</p>
-                    </div>
-
-                    <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                      <div className="flex justify-between text-xs font-mono font-bold">
-                        <span className="text-purple-600">COMUNICADOR (C)</span>
-                        <span>25.35%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-surface-elevated h-3">
-                          <div className="bg-purple-600/80 h-full" style={{ width: '25.35%' }}></div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-fg3 font-sans mt-1">Perfil focado em conexões interpessoais, oratória, carisma, influência e trabalho colaborativo.</p>
-                    </div>
-
-                    <div className="p-3 bg-surface-card border border-surface-border space-y-1">
-                      <div className="flex justify-between text-xs font-mono font-bold">
-                        <span className="text-blue-500">ANALISTA (A)</span>
-                        <span>22.51%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-surface-elevated h-3">
-                          <div className="bg-blue-500/80 h-full" style={{ width: '22.51%' }}></div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-fg3 font-sans mt-1">Perfil focado em conformidade, precisão técnica, atenção extrema a detalhes e qualidade rigorosa.</p>
-                    </div>
-                  </div>
-
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>INSIGHTS DO GESTOR</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-xs font-sans text-fg2">
-                  <p>
-                    A equipe da **VerticalParts** possui uma distribuição muito equilibrada dos quatro perfis básicos, com leve predominância do perfil **Planejador (P)** e do **Executor (E)**.
-                  </p>
-                  <p>
-                    Essa combinação (PEC) é ideal para empresas industriais e automotivas, onde a segurança e a precisão do planejamento técnico precisam estar perfeitamente integradas à agilidade operacional e eficiência comercial.
-                  </p>
-                  <div className="p-3 bg-surface-card border border-surface-border font-mono text-[10px] text-fg3">
-                    <p className="font-bold text-fg-on-dark mb-1">RECOMENDAÇÃO DE CONTRATAÇÃO:</p>
-                    <p>Focar novas admissões de engenharia em perfis dominantes em Analista (A) para manter o rigor de qualidade das peças da frota.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-sm text-fg2">
+                  Nenhum colaborador respondeu ao Profiler comportamental ainda — o questionário e o motor de
+                  cálculo de perfil (Planejador/Executor/Comunicador/Analista) não estão implementados. A
+                  composição comportamental da equipe aparece aqui assim que existir.
+                </p>
+              </CardContent>
+            </Card>
           </>
         )}
 
