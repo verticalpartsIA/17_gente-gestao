@@ -5,13 +5,7 @@ import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { 
-  Heart, 
-  Clock, 
-  Plus, 
-  FileText
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 
 const FERIAS_QUERIES = new Set(['ferias', 'minhas-ferias'])
 
@@ -90,32 +84,10 @@ export default function BeneficiosPage() {
                   SOLICITAR AGENDAMENTO
                 </Button>
               </CardHeader>
-              <CardContent className="divide-y divide-surface-border">
-                
-                <div className="py-4 flex justify-between items-center text-xs font-sans">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase">Carlos Oliveira (Logística)</h4>
-                    <p className="text-fg3 font-mono">Período Aquisitivo: 2024/2025 | Programado: 01/12/2026 a 30/12/2026</p>
-                  </div>
-                  <Badge variant="success">APROVADO GESTOR</Badge>
+              <CardContent>
+                <div className="py-8 text-center">
+                  <p className="text-xs text-fg3 font-sans">Nenhuma férias programada ainda — este módulo ainda não está integrado ao banco de dados.</p>
                 </div>
-
-                <div className="py-4 flex justify-between items-center text-xs font-sans">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase">Karla Souza (Engenharia)</h4>
-                    <p className="text-fg3 font-mono">Período Aquisitivo: 2023/2024 | Programado: 10/07/2026 a 25/07/2026 (15 dias)</p>
-                  </div>
-                  <Badge variant="warning">EM ANÁLISE RH</Badge>
-                </div>
-
-                <div className="py-4 flex justify-between items-center text-xs font-sans">
-                  <div>
-                    <h4 className="font-bold text-fg-on-dark uppercase">Juliana Silva (Financeiro)</h4>
-                    <p className="text-fg3 font-mono">Período Aquisitivo: 2022/2023 | Sem programação de férias pendente</p>
-                  </div>
-                  <Badge variant="collaborator">SEM PROGRAMAÇÃO</Badge>
-                </div>
-
               </CardContent>
             </Card>
 
@@ -144,41 +116,10 @@ export default function BeneficiosPage() {
               <CardHeader>
                 <CardTitle>BENEFÍCIOS DISPONÍVEIS</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-xs font-sans">
-                
-                <div className="p-3 border border-surface-border bg-surface-card flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Heart className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-bold text-fg-on-dark">PLANO DE SAÚDE SULAMÉRICA</p>
-                      <p className="text-[10px] text-fg3">Co-participativo, cobertura nacional.</p>
-                    </div>
-                  </div>
-                  <Badge variant="success">ATIVADO</Badge>
+              <CardContent>
+                <div className="py-8 text-center">
+                  <p className="text-xs text-fg3 font-sans">Nenhum benefício cadastrado ainda — este módulo ainda não está integrado ao banco de dados.</p>
                 </div>
-
-                <div className="p-3 border border-surface-border bg-surface-card flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-bold text-fg-on-dark">VALE ALIMENTAÇÃO / REFEIÇÃO</p>
-                      <p className="text-[10px] text-fg3">R$ 35,00 por dia útil (Cartão Pluxee).</p>
-                    </div>
-                  </div>
-                  <Badge variant="success">ATIVADO</Badge>
-                </div>
-
-                <div className="p-3 border border-surface-border bg-surface-card flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-bold text-fg-on-dark">VALE TRANSPORTE CORPORATIVO</p>
-                      <p className="text-[10px] text-fg3">Desconto padrão em folha (6%) para deslocamentos.</p>
-                    </div>
-                  </div>
-                  <Badge variant="success">ATIVADO</Badge>
-                </div>
-
               </CardContent>
             </Card>
 
@@ -187,12 +128,7 @@ export default function BeneficiosPage() {
                 <CardTitle>INFORMAÇÕES DE CUSTOS</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-xs font-sans text-fg2">
-                <p>
-                  O custo mensal consolidado de benefícios corporativos ativos na VerticalParts representa **18.4%** adicionais sobre a folha de pagamento base.
-                </p>
-                <p>
-                  A gestão e recargas de vale refeição/transporte são coordenadas pelo financeiro no dia 28 de cada mês subsequente.
-                </p>
+                <p>Sem benefícios cadastrados, não há custo consolidado a exibir ainda.</p>
               </CardContent>
             </Card>
           </div>
