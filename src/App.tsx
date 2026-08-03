@@ -19,6 +19,7 @@ import OrganogramaPage    from '@/pages/rh/OrganogramaPage'
 import ProfilerPage       from '@/pages/rh/ProfilerPage'
 import AtracaoPage        from '@/pages/rh/AtracaoPage'
 import BeneficiosPage     from '@/pages/rh/BeneficiosPage'
+import FeriasAfastamentosPage from '@/pages/rh/FeriasAfastamentosPage'
 import HoleritesPage      from '@/pages/rh/HoleritesPage'
 import ConfiguracoesPage  from '@/pages/rh/ConfiguracoesPage'
 import GestaoTalentosPage from '@/pages/rh/GestaoTalentosPage'
@@ -54,6 +55,7 @@ const ROUTE_LABELS: Record<string, string> = {
   '/profiler': 'o Profiler',
   '/atracao': 'Atração de Talentos',
   '/beneficios': 'Benefícios',
+  '/ferias-afastamentos': 'Férias & Afastamentos',
   '/holerites': 'a Folha Digital',
   '/configuracoes': 'Configurações',
   '/gestao-talentos': 'Gestão de Talentos',
@@ -134,6 +136,7 @@ function AppRoutes() {
       <Route path="/profiler"        element={<ProtectedRoute><ProfilerPage /></ProtectedRoute>} />
       <Route path="/atracao"         element={<ProtectedRoute><AtracaoPage /></ProtectedRoute>} />
       <Route path="/beneficios"      element={<ProtectedRoute><BeneficiosPage /></ProtectedRoute>} />
+      <Route path="/ferias-afastamentos" element={<ProtectedRoute><FeriasAfastamentosPage /></ProtectedRoute>} />
       <Route path="/holerites"       element={<ProtectedRoute><HoleritesPage /></ProtectedRoute>} />
       <Route path="/configuracoes"   element={<ProtectedRoute><ConfiguracoesPage /></ProtectedRoute>} />
       <Route path="/gestao-talentos" element={<ProtectedRoute><GestaoTalentosPage /></ProtectedRoute>} />

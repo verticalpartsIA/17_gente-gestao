@@ -74,12 +74,18 @@ const PROXIMA_ETAPA: Partial<Record<VagaStatus, VagaStatus>> = {
   em_pipeline: 'concluida',
 }
 
-const COMUNICACOES = [
-  { tipo: 'whatsapp', de: 'RH', para: 'Marcos Andrade',  hora: '10:30', msg: 'Olá, Marcos! Gostaríamos de confirmar sua entrevista para amanhã, 25/Jul, às 10h com o Gestor.' },
-  { tipo: 'email',    de: 'RH', para: 'Priya Correia',   hora: '09:45', msg: 'Priya, sua entrevista com o RH está confirmada para 26/Jul às 14h. Enviaremos o link da reunião.' },
-  { tipo: 'whatsapp', de: 'RH', para: 'Lívia Santos',    hora: '09:15', msg: 'Lívia, recebemos seu currículo! Gostaríamos de agendar uma triagem inicial. Você tem disponibilidade?' },
-  { tipo: 'email',    de: 'RH', para: 'João Figueiredo', hora: '08:55', msg: 'João, segue em anexo a proposta formal de trabalho. Por favor, revise e confirme até 30/Jul.' },
-]
+// Comunicações (WhatsApp/e-mail) ainda não têm integração real — em vez de
+// simular conversas fictícias (issue #19), a lista fica vazia até existir a
+// central de roteamento de WhatsApp (ver desenho na sessão).
+interface Comunicacao {
+  tipo: 'whatsapp' | 'email'
+  de: string
+  para: string
+  hora: string
+  msg: string
+}
+
+const COMUNICACOES: Comunicacao[] = []
 
 interface AdmissaoDoc {
   nome: string
@@ -741,13 +747,16 @@ export default function AtracaoPage() {
                 </CardContent>
               </Card>
 
-              {/* Feed de comunicações */}
+              {/* Feed de comunicações — sem integração real ainda (issue #19: nada de dado fabricado) */}
               <Card theme="light" noPadding className="lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
                   <CardTitle>Histórico de Comunicações</CardTitle>
                   <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Mensagem ainda não está conectado ao banco de dados.')}>Nova Mensagem</Button>
                 </CardHeader>
                 <CardContent className="space-y-4 px-5 pt-4 pb-5">
+                  {COMUNICACOES.length === 0 && (
+                    <div className="py-8 text-center text-sm text-neutral-400">Nenhuma comunicação registrada ainda — este módulo ainda não está integrado a WhatsApp/e-mail real.</div>
+                  )}
                   {COMUNICACOES.map((c, i) => (
                     <div key={i} className={`flex gap-3 ${c.tipo === 'whatsapp' ? '' : 'flex-row-reverse'}`}>
                       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${

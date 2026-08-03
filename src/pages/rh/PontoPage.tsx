@@ -20,15 +20,10 @@ import {
 
 const DIAS_UTEIS = [1,2,3,4,7,8,9,10,11,14,15,16,17,18,21,22,23,24,25,28,29,30]
 
-// Each employee: name, initials, dept, role, total_he (+ positive = HE; - negative = falta)
-const PONTO_EMPLOYEES = [
-  { initials: 'AP', name: 'Ana Paula Rocha',  dept: 'Comercial',       role: 'Gerente Comercial',    he: +8  },
-  { initials: 'CM', name: 'Carlos Mendes',    dept: 'Produção',        role: 'Supervisor',            he: +12 },
-  { initials: 'FS', name: 'Felipe Santos',    dept: 'Logística',       role: 'Coord. de Logística',   he: -4  },
-  { initials: 'BA', name: 'Bruno Almeida',    dept: 'Comercial',       role: 'Executivo de Vendas',   he: 0   },
-  { initials: 'DS', name: 'Daniela Souza',    dept: 'Qualidade',       role: 'Analista de Qualidade', he: +6  },
-  { initials: 'PR', name: 'Paulo Rodrigues',  dept: 'Almoxarifado',    role: 'Coord. de Almoxarifado',he: -2  },
-]
+// Não existe integração real de ponto (nenhuma batida foi registrada) — em
+// vez de fabricar horas extras/negativas de pessoas que nunca bateram ponto,
+// a lista fica vazia até existir o módulo de verdade.
+const PONTO_EMPLOYEES: { initials: string; name: string; dept: string; role: string; he: number }[] = []
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +42,7 @@ export default function PontoPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard icon={Clock}         color="blue"   label="HORAS EXTRAS TOTAL" value={`${totalHE}h`}   sub={`Competência ${mesRef}`} />
           <KpiCard icon={AlertTriangle} color="red"    label="HORAS NEGATIVAS"    value={`${totalFalta}h`} sub="Ausências sem justificativa" />
-          <KpiCard icon={CheckCircle}   color="green"  label="DIAS ÚTEIS"          value="22"              sub={`Dias úteis em ${mesRef}`} />
+          <KpiCard icon={CheckCircle}   color="green"  label="DIAS ÚTEIS"          value={`${DIAS_UTEIS.length}`}    sub={`Dias úteis em ${mesRef}`} />
           <KpiCard icon={Calendar}      color="brand"  label="COLABORADORES"       value={`${PONTO_EMPLOYEES.length}`} sub="Na folha de ponto" />
         </div>
 
@@ -63,7 +58,13 @@ export default function PontoPage() {
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
-            <Button size="sm" variant="outline" leftIcon={<Download className="h-4 w-4" />}>
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<Download className="h-4 w-4" />}
+              disabled
+              title="Desabilitado: nenhuma batida de ponto real foi registrada ainda."
+            >
               Exportar Espelho
             </Button>
           </CardHeader>
@@ -82,6 +83,9 @@ export default function PontoPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
+                {PONTO_EMPLOYEES.length === 0 && (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum registro de ponto ainda.</td></tr>
+                )}
                 {PONTO_EMPLOYEES.map((emp, i) => {
                   const hNorm = DIAS_UTEIS.length * 8
                   const hExtra = emp.he > 0 ? emp.he : 0

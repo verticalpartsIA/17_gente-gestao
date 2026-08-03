@@ -18,35 +18,11 @@ import {
   Edit
 } from 'lucide-react'
 
-// ── Data from HTML prototype ──────────────────────────────────────────────────
-
-const CARGOS = [
-  { cargo: 'Executivo de Vendas',     depto: 'Comercial',          nivel: 'Pleno',       cbo: '3541-05', hcAprov: 3, hcAtual: 3, vagas: 0, faixaMin: 3500,  faixaMax: 6000  },
-  { cargo: 'Gerente Comercial',       depto: 'Comercial',          nivel: 'Gerência',    cbo: '1421-05', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 9000,  faixaMax: 16000 },
-  { cargo: 'Analista de Qualidade',   depto: 'Qualidade',          nivel: 'Pleno',       cbo: '2141-05', hcAprov: 2, hcAtual: 1, vagas: 1, faixaMin: 3200,  faixaMax: 5500  },
-  { cargo: 'Coord. de Qualidade',     depto: 'Qualidade',          nivel: 'Coordenador', cbo: '1422-05', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 6000,  faixaMax: 10000 },
-  { cargo: 'Gerente Adm./Fin.',       depto: 'Adm./Financeiro',    nivel: 'Gerência',    cbo: '1412-05', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 10000, faixaMax: 18000 },
-  { cargo: 'Assistente Financeiro',   depto: 'Adm./Financeiro',    nivel: 'Júnior',      cbo: '3511-05', hcAprov: 2, hcAtual: 2, vagas: 0, faixaMin: 1800,  faixaMax: 3200  },
-  { cargo: 'Coord. de Marketing',     depto: 'Marketing',          nivel: 'Coordenador', cbo: '1422-15', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 5500,  faixaMax: 9500  },
-  { cargo: 'Designer Gráfico',        depto: 'Marketing',          nivel: 'Pleno',       cbo: '3731-10', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 3000,  faixaMax: 5500  },
-  { cargo: 'Consultor Técnico',       depto: 'Consultoria Técnica',nivel: 'Sênior',      cbo: '2149-05', hcAprov: 3, hcAtual: 2, vagas: 1, faixaMin: 7000,  faixaMax: 14000 },
-  { cargo: 'Aux. de Almoxarifado',    depto: 'Almoxarifado',       nivel: 'Júnior',      cbo: '4141-05', hcAprov: 2, hcAtual: 1, vagas: 1, faixaMin: 1500,  faixaMax: 2500  },
-  { cargo: 'Técnico de Manutenção',   depto: 'Produção',           nivel: 'Pleno',       cbo: '9141-05', hcAprov: 3, hcAtual: 2, vagas: 1, faixaMin: 2800,  faixaMax: 5000  },
-  { cargo: 'Aux. de Logística',       depto: 'Logística',          nivel: 'Júnior',      cbo: '4141-10', hcAprov: 3, hcAtual: 3, vagas: 0, faixaMin: 1600,  faixaMax: 2800  },
-  { cargo: 'Engenheiro de Projetos',  depto: 'Engenharia',         nivel: 'Pleno',       cbo: '2144-05', hcAprov: 2, hcAtual: 1, vagas: 1, faixaMin: 6000,  faixaMax: 11000 },
-  { cargo: 'Coord. Jurídico/Suprim.', depto: 'Jurídico/Suprimentos',nivel:'Coordenador', cbo: '2410-05', hcAprov: 1, hcAtual: 1, vagas: 0, faixaMin: 6500,  faixaMax: 11000 },
-]
-
-const FAIXAS_SALARIAIS = [
-  { nivel: 'Júnior',      min: 1500,  max: 3200,  med: 2200  },
-  { nivel: 'Pleno',       min: 3000,  max: 6000,  med: 4500  },
-  { nivel: 'Sênior',      min: 5500,  max: 10000, med: 7500  },
-  { nivel: 'Especialista',min: 7000,  max: 14000, med: 10000 },
-  { nivel: 'Coordenador', min: 5500,  max: 11000, med: 8000  },
-  { nivel: 'Supervisão',  min: 6000,  max: 12000, med: 8500  },
-  { nivel: 'Gerência',    min: 9000,  max: 18000, med: 13000 },
-  { nivel: 'Diretor',     min: 15000, max: 35000, med: 22000 },
-]
+// Não existe tabela rh_cargos ainda — nenhum cargo/faixa salarial real foi
+// cadastrado. Os arrays ficam vazios em vez de fabricar plano de cargos e
+// headcount que não existem.
+const CARGOS: { cargo: string; depto: string; nivel: string; cbo: string; hcAprov: number; hcAtual: number; vagas: number; faixaMin: number; faixaMax: number }[] = []
+const FAIXAS_SALARIAIS: { nivel: string; min: number; max: number; med: number }[] = []
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,7 +62,7 @@ export default function GestaoTalentosPage() {
 
   const TABS = ['Plano de Cargos', 'Estrutura Salarial']
 
-  const maxSalario = Math.max(...FAIXAS_SALARIAIS.map(f => f.max))
+  const maxSalario = FAIXAS_SALARIAIS.length > 0 ? Math.max(...FAIXAS_SALARIAIS.map(f => f.max)) : 1
 
   if (urlTab === 'admissao') {
     return (
@@ -113,10 +89,10 @@ export default function GestaoTalentosPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard icon={Briefcase} color="blue"   label="CARGOS CADASTRADOS" value="14" sub="No plano de cargos vigente" />
-          <KpiCard icon={Users}     color="green"  label="HC APROVADO"        value="26" sub="Headcount orçado no ano" />
-          <KpiCard icon={UserCheck} color="brand"  label="HC ATUAL"           value="21" sub="Colaboradores ativos" />
-          <KpiCard icon={UserX}     color="red"    label="VAGAS EM ABERTO"    value="5"  sub="HC aprovado não preenchido" />
+          <KpiCard icon={Briefcase} color="blue"   label="CARGOS CADASTRADOS" value="0" sub="Módulo ainda não integrado" />
+          <KpiCard icon={Users}     color="green"  label="HC APROVADO"        value="—" sub="Módulo ainda não integrado" />
+          <KpiCard icon={UserCheck} color="brand"  label="HC ATUAL"           value="—" sub="Módulo ainda não integrado" />
+          <KpiCard icon={UserX}     color="red"    label="VAGAS EM ABERTO"    value="—" sub="Módulo ainda não integrado" />
         </div>
 
         {/* Tabs */}
@@ -165,6 +141,9 @@ export default function GestaoTalentosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
+                  {CARGOS.length === 0 && (
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum cargo cadastrado ainda.</td></tr>
+                  )}
                   {CARGOS.map((c, i) => (
                     <tr
                       key={i}
@@ -210,6 +189,9 @@ export default function GestaoTalentosPage() {
               <CardTitle>Estrutura Salarial por Nível</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
+              {FAIXAS_SALARIAIS.length === 0 && (
+                <p className="py-8 text-center text-sm text-neutral-400">Nenhuma faixa salarial cadastrada ainda.</p>
+              )}
               {FAIXAS_SALARIAIS.map((f, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
