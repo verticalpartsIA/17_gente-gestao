@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -164,6 +164,8 @@ export default function AtracaoPage() {
   const [erroLista, setErroLista] = useState<string | null>(null)
 
   const [selectedReq, setSelectedReq] = useState<Vaga | null>(null)
+  const [colunaDestacada, setColunaDestacada] = useState<VagaStatus | null>(null)
+  const colRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const [aprovacoes, setAprovacoes] = useState<Aprovacao[]>([])
   const [mostrarFormRecusa, setMostrarFormRecusa] = useState(false)
@@ -422,6 +424,17 @@ export default function AtracaoPage() {
   const kpiAprovacao = vagas.filter(v => v.status === 'aguardando_aprovacao').length
   const kpiPipeline = vagas.filter(v => v.status === 'em_pipeline').length
 
+  function irParaColunaKanban(status: VagaStatus | null) {
+    setActiveTab(0)
+    setColunaDestacada(status)
+    if (status) {
+      setTimeout(() => {
+        colRefs.current[status]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }, 0)
+      setTimeout(() => setColunaDestacada(null), 2000)
+    }
+  }
+
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="ATRAÇÃO DE TALENTOS">
       <div className="space-y-6">
@@ -429,10 +442,10 @@ export default function AtracaoPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" />
-          <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value={String(kpiTriagem)}  sub="Aguardando análise" />
-          <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value={String(kpiAprovacao)} sub="CEO / Diretoria" />
-          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub="Candidatos ativos" />
+          <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" onClick={() => irParaColunaKanban(null)} />
+          <KpiCard icon={Clock}     color="brand" label="EM TRIAGEM RH"    value={String(kpiTriagem)}  sub="Aguardando análise" onClick={() => irParaColunaKanban('em_triagem')} />
+          <KpiCard icon={CheckCircle} color="orange" label="AGUARD. APROVAÇÃO" value={String(kpiAprovacao)} sub="CEO / Diretoria" onClick={() => irParaColunaKanban('aguardando_aprovacao')} />
+          <KpiCard icon={Users}     color="green" label="EM PIPELINE"      value={String(kpiPipeline)}  sub="Candidatos ativos" onClick={() => setActiveTab(1)} />
         </div>
 
         {/* Tabs */}
@@ -476,7 +489,13 @@ export default function AtracaoPage() {
 
             <div className="flex gap-4 overflow-x-auto pb-2">
               {KANBAN_STATUSES.map((status, colIdx) => (
-                <div key={status} className="w-64 shrink-0 space-y-3">
+                <div
+                  key={status}
+                  ref={el => { colRefs.current[status] = el }}
+                  className={`w-64 shrink-0 space-y-3 rounded-lg transition-shadow ${
+                    colunaDestacada === status ? 'ring-2 ring-primary ring-offset-2' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600">{STATUS_LABEL[status]}</h3>
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-bold text-neutral-600">

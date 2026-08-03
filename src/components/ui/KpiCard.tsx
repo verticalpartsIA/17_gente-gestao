@@ -10,6 +10,7 @@ interface KpiCardProps {
   sub?: string
   color?: KpiColor
   theme?: 'light' | 'dark'
+  onClick?: () => void
 }
 
 const colorMap: Record<KpiColor, { icon: string; subText: string }> = {
@@ -25,15 +26,18 @@ const colorMap: Record<KpiColor, { icon: string; subText: string }> = {
  * Card de KPI para dashboards.
  * Exibe ícone, valor principal, label e subtítulo opcional.
  */
-export function KpiCard({ icon: Icon, label, value, sub, color = 'brand', theme = 'dark' }: KpiCardProps) {
+export function KpiCard({ icon: Icon, label, value, sub, color = 'brand', theme = 'dark', onClick }: KpiCardProps) {
   const c = colorMap[color]
+  const Tag = onClick ? 'button' : 'div'
   return (
-    <div
+    <Tag
+      onClick={onClick}
       className={cn(
-        'rounded-xl border p-5',
+        'rounded-xl border p-5 text-left w-full',
         theme === 'dark'
           ? 'bg-surface-card border-surface-border'
           : 'bg-white border-neutral-200 shadow-card',
+        onClick && 'transition-colors hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer',
       )}
     >
       <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-xl', c.icon)}>
@@ -48,6 +52,6 @@ export function KpiCard({ icon: Icon, label, value, sub, color = 'brand', theme 
       <p className={cn('mt-1 text-xs', theme === 'dark' ? 'text-slate-500' : 'text-neutral-500')}>
         {label}
       </p>
-    </div>
+    </Tag>
   )
 }
