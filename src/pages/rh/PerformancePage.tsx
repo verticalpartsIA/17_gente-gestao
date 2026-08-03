@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -6,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { AvaliacaoExperienciaTab } from '@/components/rh/AvaliacaoExperienciaTab'
 import {
   Target,
   BookOpen,
@@ -101,10 +103,39 @@ function progressColor(p: number) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+const TABS = [
+  'Avaliação de Desempenho',
+  'Avaliação de Experiência',
+  'Matriz 9-Box',
+  'Metas / OKRs',
+  'PDI',
+  'Treinamentos',
+]
+
+// O menu lateral aponta 8 valores de ?tab= para esta página. 'competencias' e
+// 'performance' ainda não têm tela própria — caem em "Avaliação de Desempenho"
+// (a mais próxima) em vez de abrir a primeira aba sem avisar.
+const TAB_POR_QUERY: Record<string, number> = {
+  avaliacao:     0,
+  competencias:  0,
+  performance:   0,
+  experiencia:   1,
+  '9box':        2,
+  metas:         3,
+  pdi:           4,
+  treinamentos:  5,
+}
+
 export default function PerformancePage() {
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
 
-  const TABS = ['Avaliação de Desempenho', 'Matriz 9-Box', 'Metas / OKRs', 'PDI', 'Treinamentos']
+  useEffect(() => {
+    const q = searchParams.get('tab')
+    if (!q) return
+    const indice = TAB_POR_QUERY[q]
+    if (indice !== undefined) setActiveTab(indice)
+  }, [searchParams])
 
   // Build 9-box grid: 3x3 matrix, rows = potencial (2→0 top-to-bottom), cols = performance (0→2)
   // pot=2: top row | pot=1: mid row | pot=0: bottom row
@@ -150,7 +181,9 @@ export default function PerformancePage() {
                 <CardTitle>Avaliação de Desempenho (AVD) — Ciclo Q3 2026</CardTitle>
                 <p className="mt-1 text-xs text-neutral-500">Critérios: Autoavaliação, Avaliação do Gestor, Avaliação de Pares</p>
               </div>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Avaliação ainda não está conectado ao banco de dados.')}>Nova Avaliação</Button>
+              {/* AVD é o ciclo trimestral (autoavaliação/gestor/pares) — instrumento
+                  diferente da Avaliação de Experiência, que tem aba própria. */}
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('O ciclo de AVD ainda não está conectado ao banco de dados.\n\nPara avaliar o período de experiência (45/90 dias), use a aba "Avaliação de Experiência".')}>Nova Avaliação</Button>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
@@ -192,8 +225,11 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 1 — Matriz 9-Box */}
-        {activeTab === 1 && (
+        {/* Tab 1 — Avaliação de Experiência (45 / 90 dias) */}
+        {activeTab === 1 && <AvaliacaoExperienciaTab />}
+
+        {/* Tab 2 — Matriz 9-Box */}
+        {activeTab === 2 && (
           <Card theme="light">
             <CardHeader className="border-b border-neutral-200 pb-4">
               <CardTitle>Matriz 9-Box — Performance × Potencial</CardTitle>
@@ -250,8 +286,8 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 2 — Metas / OKRs */}
-        {activeTab === 2 && (
+        {/* Tab 3 — Metas / OKRs */}
+        {activeTab === 3 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Gestão de Metas / OKRs — Q3 2026</CardTitle>
@@ -286,8 +322,8 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 3 — PDI */}
-        {activeTab === 3 && (
+        {/* Tab 4 — PDI */}
+        {activeTab === 4 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -329,8 +365,8 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 4 — Treinamentos */}
-        {activeTab === 4 && (
+        {/* Tab 5 — Treinamentos */}
+        {activeTab === 5 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Treinamentos — Ciclo 2026</CardTitle>
