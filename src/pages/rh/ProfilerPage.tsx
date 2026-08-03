@@ -14,6 +14,19 @@ import {
   FileText
 } from 'lucide-react'
 
+// Módulo demonstrativo (issue #57, 17_gente-gestao) — não integrado ao banco.
+//
+// Para virar fonte oficial de dados comportamentais este contrato mínimo
+// precisa existir antes de qualquer ação rápida ser reativada:
+//   - questionário do Profiler persistido (tabela `rh_profiler_respostas` ou
+//     equivalente) + motor de cálculo de perfil (Planejador/Executor/
+//     Comunicador/Analista);
+//   - herança de dados reais de /colaboradores, /organograma e
+//     /gestao-talentos?tab=cargos (issue #55);
+//   - permissão de visualização por papel (próprio perfil / equipe / RH-Admin).
+// Enquanto isso não existir, nenhuma outra tela (dashboard, desempenho,
+// retenção, atração, organograma) deve tratar os números daqui como reais —
+// ver issue #56.
 export default function ProfilerPage() {
   const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState<'empresa' | 'individual'>('empresa')
@@ -120,17 +133,25 @@ export default function ProfilerPage() {
                 <CardTitle>AÇÕES RÁPIDAS</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={() => alert('Questionário do Profiler ainda não está conectado ao banco de dados.')}>
+                <Button
+                  className="w-full"
+                  disabled
+                  title="Indisponível: questionário e motor de cálculo do Profiler ainda não foram implementados."
+                >
                   RESPONDER PROFILER NOVAMENTE →
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full"
                   rightIcon={<FileText className="h-4 w-4" />}
-                  onClick={() => alert('Exportação de laudo em PDF ainda não está implementada.')}
+                  disabled
+                  title="Indisponível: exportação de laudo em PDF ainda não foi implementada."
                 >
                   EXPORTAR LAUDO PDF
                 </Button>
+                <p className="text-[11px] text-fg3 text-center">
+                  Ações desabilitadas até o módulo ser integrado ao banco de dados.
+                </p>
                 <div className="p-3 bg-surface-card border border-surface-border text-center text-xs text-fg3">
                   <HelpCircle className="h-5 w-5 text-primary mx-auto mb-1" />
                   <span>O profiler é recomendado a ser respondido a cada 12 meses.</span>
