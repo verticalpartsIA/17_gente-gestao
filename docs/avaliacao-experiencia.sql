@@ -180,6 +180,17 @@ create policy avaliacoes_exp_avaliador_upd on public.avaliacoes_experiencia
   using (avaliador_id = auth.uid() and status = 'rascunho')
   with check (avaliador_id = auth.uid());
 
+-- O avaliador precisa poder apagar o próprio rascunho: se a gravação das
+-- respostas falhar no meio, o cabeçalho já inserido tem de ser removido, senão
+-- fica um rascunho órfão que ele não consegue limpar (e que bloquearia a
+-- constraint unique(colaborador_id, fase) na próxima tentativa).
+-- Só rascunho: avaliação concluída apaga apenas o RH.
+drop policy if exists avaliacoes_exp_avaliador_del on public.avaliacoes_experiencia;
+
+create policy avaliacoes_exp_avaliador_del on public.avaliacoes_experiencia
+  for delete to authenticated
+  using (avaliador_id = auth.uid() and status = 'rascunho');
+
 drop policy if exists avaliacoes_exp_resp_admin_all     on public.avaliacoes_experiencia_respostas;
 drop policy if exists avaliacoes_exp_resp_avaliador_sel on public.avaliacoes_experiencia_respostas;
 drop policy if exists avaliacoes_exp_resp_avaliador_ins on public.avaliacoes_experiencia_respostas;

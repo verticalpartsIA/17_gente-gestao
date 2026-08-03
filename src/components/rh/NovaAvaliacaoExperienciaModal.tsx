@@ -11,10 +11,18 @@ import {
   Info,
   Copy,
   Check,
+  Save,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
+import {
+  listarColaboradores,
+  persistenciaDisponivel,
+  salvarAvaliacao,
+  type ColaboradorOpcao,
+} from '@/lib/avaliacaoExperienciaRepo'
 import {
   CATALOGO_VERSAO,
   CRITERIOS_PERCEPCAO,
@@ -44,6 +52,8 @@ type Etapa = 'identificacao' | 'questionario' | 'resultado'
 interface Props {
   open: boolean
   onClose: () => void
+  /** Chamado após gravar com sucesso, para a lista da aba se atualizar. */
+  onSalvo?: () => void
 }
 
 // ── Escala de nota (0 a 5, passos de 0,5) + N/A ───────────────────────────────
@@ -176,17 +186,40 @@ function LinhaCriterio({
 
 // ── Modal ────────────────────────────────────────────────────────────────────
 
-export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
+export function NovaAvaliacaoExperienciaModal({ open, onClose, onSalvo }: Props) {
+  const { profile } = useAuth()
+
   const [etapa, setEtapa] = useState<Etapa>('identificacao')
-  const [nome, setNome] = useState('')
+  const [colaboradores, setColaboradores] = useState<ColaboradorOpcao[]>([])
+  const [carregandoColaboradores, setCarregandoColaboradores] = useState(false)
+  const [erroColaboradores, setErroColaboradores] = useState<string | null>(null)
+  const [colaboradorId, setColaboradorId] = useState('')
   const [cargo, setCargo] = useState('')
   const [admissao, setAdmissao] = useState('')
-  const [avaliador, setAvaliador] = useState('')
   const [grupo, setGrupo] = useState<Grupo | null>(null)
   const [fase, setFase] = useState<Fase | null>(null)
   const [respostas, setRespostas] = useState<Record<string, Resposta>>({})
   const [justificativa, setJustificativa] = useState('')
   const [copiado, setCopiado] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
+  const [salvo, setSalvo] = useState(false)
+
+  const colaborador = colaboradores.find(c => c.id === colaboradorId) ?? null
+  const nome = colaborador?.name ?? ''
+
+  // Carrega a lista de colaboradores ao abrir
+  useEffect(() => {
+    if (!open || !persistenciaDisponivel()) return
+    let ativo = true
+    setCarregandoColaboradores(true)
+    setErroColaboradores(null)
+    listarColaboradores()
+      .then(lista => { if (ativo) setColaboradores(lista) })
+      .catch(e => { if (ativo) setErroColaboradores(e.message) })
+      .finally(() => { if (ativo) setCarregandoColaboradores(false) })
+    return () => { ativo = false }
+  }, [open])
 
   // Bloqueia o scroll do fundo e fecha no Esc
   useEffect(() => {
@@ -219,10 +252,12 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
   const protocolo = fase && resultado.faixa ? getProtocolo(fase, resultado.faixa) : null
   const prazo = fase && admissao ? alertaPrazo(fase, admissao) : null
 
-  const podeAvancar = nome.trim() !== '' && grupo !== null && fase !== null
+  const podeAvancar = colaboradorId !== '' && grupo !== null && fase !== null
   const exigeJustificativa = protocolo?.exigeJustificativa ?? false
   const podeConcluir =
-    resultado.completo && (!exigeJustificativa || justificativa.trim().length >= 20)
+    resultado.completo &&
+    (!exigeJustificativa || justificativa.trim().length >= 20) &&
+    !salvando
 
   function setNota(criterioId: string, nota: Nota) {
     setRespostas(r => ({ ...r, [criterioId]: { ...r[criterioId], criterioId, nota } }))
@@ -237,14 +272,49 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
 
   function reiniciar() {
     setEtapa('identificacao')
-    setNome(''); setCargo(''); setAdmissao(''); setAvaliador('')
+    setColaboradorId(''); setCargo(''); setAdmissao('')
     setGrupo(null); setFase(null)
     setRespostas({}); setJustificativa(''); setCopiado(false)
+    setSalvando(false); setErroSalvar(null); setSalvo(false)
   }
 
   function fechar() {
     reiniciar()
     onClose()
+  }
+
+  async function concluir() {
+    // Sem persistência (modo simulado) o botão só fecha — o relatório copiado
+    // é o único registro possível, e a tela já avisa isso.
+    if (!persistenciaDisponivel() || !profile || !grupo || !fase) {
+      fechar()
+      return
+    }
+    setSalvando(true)
+    setErroSalvar(null)
+    try {
+      await salvarAvaliacao({
+        colaboradorId,
+        colaboradorNome: nome,
+        colaboradorCargo: cargo.trim() || null,
+        dataAdmissao: admissao || null,
+        avaliadorId: profile.id,
+        avaliadorNome: profile.name,
+        grupo,
+        fase,
+        resultado,
+        termometro,
+        justificativa,
+        respostas: Object.values(respostas),
+      })
+      setSalvo(true)
+      onSalvo?.()
+      setTimeout(fechar, 1200)
+    } catch (e) {
+      setErroSalvar(e instanceof Error ? e.message : 'Erro inesperado ao gravar.')
+    } finally {
+      setSalvando(false)
+    }
   }
 
   function relatorioTexto(): string {
@@ -253,7 +323,7 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
       '='.repeat(52),
       `Colaborador: ${nome}${cargo ? ` — ${cargo}` : ''}`,
       admissao ? `Admissão: ${admissao}` : '',
-      `Avaliador: ${avaliador || '—'}`,
+      `Avaliador: ${profile?.name ?? '—'}`,
       `Grupo: ${grupo ? grupoLabel(grupo) : '—'} | Fase: ${fase} dias`,
       `Catálogo versão: ${CATALOGO_VERSAO}`,
       '',
@@ -335,16 +405,46 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
         {etapa === 'identificacao' && (
           <div className="space-y-6 px-5 py-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
+              <label className="block sm:col-span-2">
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
                   Colaborador avaliado *
                 </span>
-                <input
-                  value={nome}
-                  onChange={e => setNome(e.target.value)}
-                  placeholder="Nome completo"
-                  className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                />
+                <select
+                  value={colaboradorId}
+                  onChange={e => {
+                    const id = e.target.value
+                    setColaboradorId(id)
+                    // Preenche o cargo a partir do cadastro, mas segue editável:
+                    // job_title está vazio em parte dos perfis.
+                    const c = colaboradores.find(x => x.id === id)
+                    setCargo(c?.job_title ?? '')
+                  }}
+                  disabled={carregandoColaboradores || colaboradores.length === 0}
+                  className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40 disabled:bg-neutral-50 disabled:text-neutral-400"
+                >
+                  <option value="">
+                    {carregandoColaboradores
+                      ? 'Carregando colaboradores…'
+                      : colaboradores.length === 0
+                        ? 'Nenhum colaborador disponível'
+                        : 'Selecione o colaborador'}
+                  </option>
+                  {colaboradores.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.department ? ` — ${c.department}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {erroColaboradores && (
+                  <span className="mt-1 block text-[11px] text-red-600">{erroColaboradores}</span>
+                )}
+                {!persistenciaDisponivel() && (
+                  <span className="mt-1 block text-[11px] text-amber-700">
+                    App em modo simulado (sem chaves do Supabase): a lista de colaboradores e a
+                    gravação estão indisponíveis.
+                  </span>
+                )}
               </label>
               <label className="block">
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
@@ -367,18 +467,21 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
                   onChange={e => setAdmissao(e.target.value)}
                   className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
+                <span className="mt-1 block text-[11px] text-neutral-400">
+                  Não vem do cadastro — habilita o alerta de prazo do contrato
+                </span>
               </label>
-              <label className="block">
+              <div className="sm:col-span-2">
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-neutral-500">
                   Avaliador
                 </span>
-                <input
-                  value={avaliador}
-                  onChange={e => setAvaliador(e.target.value)}
-                  placeholder="Quem está aplicando a avaliação"
-                  className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                />
-              </label>
+                <p className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+                  {profile?.name ?? '—'}
+                  {profile?.level ? (
+                    <span className="text-neutral-400"> · {profile.level}</span>
+                  ) : null}
+                </p>
+              </div>
             </div>
 
             {/* Grupo */}
@@ -690,17 +793,37 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
               </label>
             )}
 
-            {/* Persistência ainda não implantada */}
-            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                <strong>Esta avaliação ainda não é gravada.</strong> As tabelas já existem no banco
-                (ver{' '}
-                <code className="rounded bg-amber-100 px-1">docs/avaliacao-experiencia.sql</code>),
-                mas a gravação pela tela ainda não foi ligada. Copie o relatório abaixo antes de
-                fechar, ou ele será perdido.
-              </span>
-            </div>
+            {/* Estado da gravação */}
+            {!persistenciaDisponivel() && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <strong>Modo simulado — esta avaliação não será gravada.</strong> O app está
+                  rodando sem as chaves do Supabase. Copie o relatório antes de fechar.
+                </span>
+              </div>
+            )}
+
+            {erroSalvar && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <strong>Não foi possível gravar.</strong> {erroSalvar}
+                  <br />
+                  Nada foi salvo pela metade. Copie o relatório para não perder o preenchimento.
+                </span>
+              </div>
+            )}
+
+            {salvo && (
+              <div className="flex items-start gap-2 rounded-lg border border-green-300 bg-green-50 p-3 text-xs text-green-800">
+                <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  <strong>Avaliação gravada.</strong> Registro fechado — a partir de agora só o RH
+                  pode alterá-lo.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -774,8 +897,20 @@ export function NovaAvaliacaoExperienciaModal({ open, onClose }: Props) {
                 >
                   {copiado ? 'Copiado' : 'Copiar relatório'}
                 </Button>
-                <Button size="sm" disabled={!podeConcluir} onClick={fechar}>
-                  Concluir
+                <Button
+                  size="sm"
+                  disabled={!podeConcluir || salvo}
+                  loading={salvando}
+                  leftIcon={<Save className="h-4 w-4" />}
+                  onClick={concluir}
+                >
+                  {salvo
+                    ? 'Gravado'
+                    : salvando
+                      ? 'Gravando…'
+                      : persistenciaDisponivel()
+                        ? 'Concluir e gravar'
+                        : 'Concluir'}
                 </Button>
               </>
             )}
