@@ -30,8 +30,8 @@ import {
   ENTREVISTA_TIPO_LABEL,
   listarAdmissoes,
   listarDocumentosPorAdmissoes,
-  marcarDocumento,
-  marcarContratoAssinado,
+  revisarDocumento,
+  aprovarAdmissao,
   type Vaga,
   type Aprovacao,
   type VagaStatus,
@@ -408,24 +408,52 @@ export default function AtracaoPage() {
 
   useEffect(carregarAdmissoes, [carregarAdmissoes])
 
-  async function handleToggleDocumento(doc: AdmissaoDocumento) {
+  async function handleAprovarDocumento(doc: AdmissaoDocumento) {
     setAdmissaoAcaoErro(null)
     try {
-      await marcarDocumento(doc.id, !doc.entregue)
+      await revisarDocumento(doc.id, 'aprovado')
       carregarAdmissoes()
     } catch (e) {
       setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
     }
   }
 
-  async function handleToggleContrato(adm: Admissao) {
+  async function handleRecusarDocumento(doc: AdmissaoDocumento) {
+    const motivo = window.prompt(`Motivo da recusa de "${doc.nome}" (o candidato vai ver esse texto):`)
+    if (motivo === null) return
+    if (!motivo.trim()) { setAdmissaoAcaoErro('Informe o motivo da recusa.'); return }
     setAdmissaoAcaoErro(null)
     try {
-      await marcarContratoAssinado(adm.id, !adm.contrato_assinado)
+      await revisarDocumento(doc.id, 'recusado', motivo)
       carregarAdmissoes()
     } catch (e) {
       setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
     }
+  }
+
+  async function handleAprovarAdmissao(adm: Admissao) {
+    const nome = adm.candidato?.nome ?? 'este candidato'
+    if (!window.confirm(`Aprovar a admissão de ${nome}? Isso cria o registro definitivo em Colaboradores.`)) return
+    setAdmissaoAcaoErro(null)
+    try {
+      await aprovarAdmissao(adm.id)
+      carregarAdmissoes()
+    } catch (e) {
+      setAdmissaoAcaoErro(e instanceof Error ? e.message : 'Erro inesperado.')
+    }
+  }
+
+  function handleCopiarLinkAdmissao(adm: Admissao) {
+    const url = `${window.location.origin}/admissao/${adm.access_token}`
+    navigator.clipboard?.writeText(url)
+    setAdmissaoAcaoErro(null)
+    window.alert(`Link copiado:\n${url}\n\nEnvie manualmente por WhatsApp/e-mail para o candidato.`)
+  }
+
+  const ADMISSAO_STATUS_LABEL: Record<Admissao['status'], string> = {
+    pendente_preenchimento: 'Aguardando o candidato preencher',
+    em_analise: 'Em análise do DP',
+    aprovado: 'Aprovado / Admitido',
   }
 
   const kpiAberto = vagas.filter(v => v.status !== 'concluida' && v.status !== 'cancelada').length
@@ -829,10 +857,11 @@ export default function AtracaoPage() {
 
             {admissoes.map(adm => {
               const docs = documentosPorAdmissao[adm.id] ?? []
-              const concluidos = docs.filter(d => d.entregue).length
+              const concluidos = docs.filter(d => d.status === 'aprovado').length
               const total = docs.length
               const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0
               const nome = adm.candidato?.nome ?? 'Candidato removido'
+              const podeAprovarAdmissao = souAdministrador && adm.status === 'em_analise' && concluidos === total && total > 0
               return (
                 <Card key={adm.id} theme="light">
                   <CardContent className="pt-5 pb-5">
@@ -841,25 +870,25 @@ export default function AtracaoPage() {
                         {iniciais(nome)}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <div>
                             <p className="font-semibold text-neutral-900">{nome}</p>
                             <p className="text-xs text-neutral-500">
                               {adm.vaga?.titulo_cargo ?? '—'} · {adm.vaga?.ticket_number ?? '—'}
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            {adm.contrato_assinado
-                              ? <Badge variant="success">Contrato Assinado</Badge>
-                              : <Badge variant="warning">Aguardando Docs.</Badge>
-                            }
-                            {souAdministrador && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleContrato(adm)}
-                              >
-                                {adm.contrato_assinado ? 'Desfazer Assinatura' : 'Marcar Assinado'}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={adm.status === 'aprovado' ? 'success' : adm.status === 'em_analise' ? 'info' : 'warning'}>
+                              {ADMISSAO_STATUS_LABEL[adm.status]}
+                            </Badge>
+                            {adm.status === 'pendente_preenchimento' && (
+                              <Button variant="outline" size="sm" onClick={() => handleCopiarLinkAdmissao(adm)}>
+                                Copiar link de admissão
+                              </Button>
+                            )}
+                            {podeAprovarAdmissao && (
+                              <Button size="sm" onClick={() => handleAprovarAdmissao(adm)}>
+                                Aprovar admissão
                               </Button>
                             )}
                             <Button
@@ -878,27 +907,46 @@ export default function AtracaoPage() {
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="text-xs font-bold text-neutral-600">{concluidos}/{total} docs</span>
+                          <span className="text-xs font-bold text-neutral-600">{concluidos}/{total} docs aprovados</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Expanded checklist */}
                     {selectedAdm?.id === adm.id && (
-                      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
+                      <div className="mt-4 space-y-2 border-t border-neutral-100 pt-4">
                         {docs.map(doc => (
-                          <button
-                            key={doc.id}
-                            type="button"
-                            disabled={!souAdministrador}
-                            onClick={() => handleToggleDocumento(doc)}
-                            className={`flex items-center gap-2 text-left text-sm rounded p-2 transition-colors ${
-                              doc.entregue ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
-                            } ${souAdministrador ? 'hover:brightness-95 cursor-pointer' : 'cursor-default'}`}
-                          >
-                            <span className="text-base">{doc.entregue ? '✓' : '○'}</span>
-                            {doc.nome}
-                          </button>
+                          <div key={doc.id} className={`flex items-center justify-between gap-3 rounded p-2.5 text-sm ${
+                            doc.status === 'aprovado' ? 'bg-green-50' : doc.status === 'recusado' ? 'bg-red-50' : 'bg-neutral-50'
+                          }`}>
+                            <div className="min-w-0">
+                              <p className="text-neutral-800">{doc.nome}</p>
+                              <p className="text-xs text-neutral-400 truncate">
+                                {doc.nome_arquivo ?? 'Ainda não enviado pelo candidato'}
+                                {doc.status === 'recusado' && doc.motivo_recusa && ` · Recusado: ${doc.motivo_recusa}`}
+                              </p>
+                            </div>
+                            {souAdministrador && doc.nome_arquivo && (
+                              <div className="flex gap-1.5 shrink-0">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={doc.status === 'aprovado'}
+                                  onClick={() => handleAprovarDocumento(doc)}
+                                >
+                                  Aprovar
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={doc.status === 'recusado'}
+                                  onClick={() => handleRecusarDocumento(doc)}
+                                >
+                                  Recusar
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}

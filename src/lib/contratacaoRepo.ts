@@ -432,26 +432,34 @@ export async function atualizarEntrevista(
 // Nasce sozinha (trigger no banco) quando um candidato vira 'contratado' —
 // já com o checklist padrão de 12 documentos, tudo pendente.
 
+export type AdmissaoStatus = 'pendente_preenchimento' | 'em_analise' | 'aprovado'
+export type AdmissaoDocumentoStatus = 'pendente' | 'aprovado' | 'recusado'
+
 export interface Admissao {
   id: string
   candidato_id: string
   vaga_id: string
+  access_token: string
+  passo_atual: number
+  status: AdmissaoStatus
   contrato_assinado: boolean
   contrato_assinado_em: string | null
   contrato_assinado_por: string | null
   created_at: string
   updated_at: string
   candidato?: { nome: string } | null
-  vaga?: { titulo_cargo: string; ticket_number: string } | null
+  vaga?: { titulo_cargo: string; ticket_number: string; departamento: string } | null
 }
 
 export interface AdmissaoDocumento {
   id: string
   admissao_id: string
   nome: string
-  entregue: boolean
-  entregue_em: string | null
-  entregue_por: string | null
+  status: AdmissaoDocumentoStatus
+  motivo_recusa: string | null
+  storage_path: string | null
+  nome_arquivo: string | null
+  enviado_em: string | null
   created_at: string
   updated_at: string
 }
@@ -461,7 +469,7 @@ export async function listarAdmissoes(): Promise<Admissao[]> {
   if (isMockMode) return []
   const { data, error } = await db
     .from('contratacao_admissoes')
-    .select('*, candidato:contratacao_candidatos(nome), vaga:contratacao_vagas(titulo_cargo, ticket_number)')
+    .select('*, candidato:contratacao_candidatos(nome), vaga:contratacao_vagas(titulo_cargo, ticket_number, departamento)')
     .order('created_at', { ascending: false })
   if (error) throw new Error(`Não foi possível carregar as admissões: ${error.message}`)
   return (data ?? []) as Admissao[]
@@ -490,9 +498,17 @@ export async function listarDocumentosPorAdmissoes(admissaoIds: string[]): Promi
   return (data ?? []) as AdmissaoDocumento[]
 }
 
-export async function marcarDocumento(documentoId: string, entregue: boolean): Promise<void> {
+/** Aprovar/recusar um documento enviado pelo candidato — recusa exige justificativa. */
+export async function revisarDocumento(
+  documentoId: string,
+  status: Extract<AdmissaoDocumentoStatus, 'aprovado' | 'recusado'>,
+  motivoRecusa?: string,
+): Promise<void> {
   if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
-  const { error } = await db.from('contratacao_admissao_documentos').update({ entregue }).eq('id', documentoId)
+  const { error } = await db
+    .from('contratacao_admissao_documentos')
+    .update({ status, motivo_recusa: status === 'recusado' ? motivoRecusa?.trim() || null : null })
+    .eq('id', documentoId)
   if (error) throw new Error(`Não foi possível atualizar o documento: ${error.message}`)
 }
 
@@ -503,4 +519,48 @@ export async function marcarContratoAssinado(admissaoId: string, assinado: boole
     .update({ contrato_assinado: assinado })
     .eq('id', admissaoId)
   if (error) throw new Error(`Não foi possível atualizar o contrato: ${error.message}`)
+}
+
+export async function marcarAdmissaoEmAnalise(admissaoId: string): Promise<void> {
+  if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
+  const { error } = await db.from('contratacao_admissoes').update({ status: 'em_analise' }).eq('id', admissaoId)
+  if (error) throw new Error(`Não foi possível atualizar o status: ${error.message}`)
+}
+
+/**
+ * Aprova a admissão e gera o registro definitivo do colaborador em
+ * `profiles` — mesmo formato que ColaboradoresPage.tsx já usa pra criar
+ * gente na mão (name/email/level/department/is_active/is_placeholder),
+ * só que pré-preenchido com o que o candidato já informou no wizard.
+ */
+export async function aprovarAdmissao(admissaoId: string): Promise<void> {
+  if (isMockMode) throw new Error('Gravação indisponível em modo simulado.')
+
+  const { data: admissao, error: admissaoErr } = await db
+    .from('contratacao_admissoes')
+    .select('id, candidato:contratacao_candidatos(nome), vaga:contratacao_vagas(titulo_cargo, departamento)')
+    .eq('id', admissaoId)
+    .single()
+  if (admissaoErr || !admissao) throw new Error('Admissão não encontrada.')
+
+  const { data: dadosPessoais } = await db
+    .from('contratacao_admissao_dados_pessoais')
+    .select('email')
+    .eq('admissao_id', admissaoId)
+    .maybeSingle()
+
+  const { error: profileErr } = await db.from('profiles').insert({
+    name: admissao.candidato?.nome ?? 'Colaborador',
+    email: dadosPessoais?.email ?? null,
+    level: 'Colaborador',
+    department: admissao.vaga?.departamento ?? null,
+    job_title: admissao.vaga?.titulo_cargo ?? null,
+    is_active: true,
+    is_placeholder: false,
+    is_department_lead: false,
+  })
+  if (profileErr) throw new Error(`Admissão não foi aprovada — falha ao criar o colaborador: ${profileErr.message}`)
+
+  const { error } = await db.from('contratacao_admissoes').update({ status: 'aprovado' }).eq('id', admissaoId)
+  if (error) throw new Error(`Colaborador criado, mas não foi possível atualizar o status da admissão: ${error.message}`)
 }

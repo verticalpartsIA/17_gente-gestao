@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
@@ -75,16 +75,21 @@ export default function GestaoTalentosPage() {
   const maxSalario = FAIXAS_SALARIAIS.length > 0 ? Math.max(...FAIXAS_SALARIAIS.map(f => f.max)) : 1
 
   if (urlTab === 'admissao') {
+    // A Admissão Digital de verdade (wizard do candidato + checklist do RH,
+    // Fase 1) vive em /atracao, aba "Admissão Digital" — não nesta rota.
+    // Antes essa entrada do menu dizia "ainda não foi implementado", o que
+    // não é mais verdade; só apontava pro lugar errado.
     return (
       <AppShell navItems={NAV_ITEMS} pageTitle="GESTÃO DE TALENTOS — ADMISSÃO DIGITAL">
         <div className="space-y-6">
-          <DemoDataBanner />
           <Card theme="light">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-8 text-center space-y-4">
               <p className="text-sm text-neutral-600">
-                O fluxo de Admissão Digital (onboarding, upload de documentos, checklist de contratação)
-                ainda não foi implementado. Esta página hoje só cobre Cargos e Salários.
+                A Admissão Digital já existe — ela mora na tela de Atração de Talentos, não aqui.
               </p>
+              <Link to="/atracao">
+                <Button size="sm">Ir para Atração de Talentos →</Button>
+              </Link>
             </CardContent>
           </Card>
         </div>

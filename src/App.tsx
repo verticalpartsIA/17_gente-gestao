@@ -27,6 +27,7 @@ import RetencaoEngajamentoPage from '@/pages/rh/RetencaoEngajamentoPage'
 import MarketplacePage from '@/pages/rh/MarketplacePage'
 import SuportePage from '@/pages/rh/SuportePage'
 import MeuEspacoPage from '@/pages/rh/MeuEspacoPage'
+import AdmissaoDigitalPortalPage from '@/pages/AdmissaoDigitalPortalPage'
 
 // Único ponto de entrada suportado é o card do vpsistema.com, que injeta
 // ?sso_token=&sso_refresh= (ver AuthProvider). Quem chegar aqui sem sessão
@@ -121,6 +122,9 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password"  element={<ResetPasswordPage />} />
       <Route path="/showcase"        element={<AdminRoute><ShowcasePage /></AdminRoute>} />
+      {/* Público de propósito: candidato acessa via link com token, sem conta
+          no sistema — autenticado só pela Edge Function admissao-portal. */}
+      <Route path="/admissao/:token" element={<AdmissaoDigitalPortalPage />} />
       
       {/* Rotas de RH Protegidas */}
       <Route path="/dashboard"       element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
