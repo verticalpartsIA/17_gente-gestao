@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { AvaliacaoExperienciaTab } from '@/components/rh/AvaliacaoExperienciaTab'
+import { useAuth } from '@/lib/auth'
+import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import {
   Target,
   BookOpen,
@@ -90,14 +92,22 @@ const NO_CONTENT_LABEL: Record<string, string> = {
 }
 
 export default function PerformancePage() {
+  const { profile } = useAuth()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+  const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
 
   const urlTab = searchParams.get('tab')
 
   useEffect(() => {
     if (urlTab && urlTab in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[urlTab])
   }, [urlTab])
+
+  // PDI deveria usar perfil comportamental do Profiler — issue #56. Ainda
+  // 'nao_implementado' (ver src/lib/profilerContract.ts).
+  useEffect(() => {
+    if (profile) getProfilerResumo(profile.id).then(setProfiler)
+  }, [profile])
 
   // Build 9-box grid: 3x3 matrix, rows = potencial (2→0 top-to-bottom), cols = performance (0→2)
   // pot=2: top row | pot=1: mid row | pot=0: bottom row
@@ -319,6 +329,13 @@ export default function PerformancePage() {
               <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Ação ainda não está conectado ao banco de dados.')}>Nova Ação</Button>
             </div>
 
+            {profiler && (
+              <p className="text-xs italic text-neutral-500">
+                Perfil comportamental (Profiler) para orientar o PDI: {profiler.statusProfiler === 'nao_implementado'
+                  ? 'ainda não disponível — motor de cálculo do Profiler não implementado.'
+                  : profiler.perfilPredominante}
+              </p>
+            )}
             {PDI_AP.length === 0 && (
               <p className="py-8 text-center text-sm text-neutral-400">Nenhum PDI cadastrado ainda.</p>
             )}

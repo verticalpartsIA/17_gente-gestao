@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
+import { useAuth } from '@/lib/auth'
+import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/ui/KpiCard'
@@ -19,13 +21,22 @@ import {
 const TAB_BY_QUERY: Record<string, number> = { enps: 0, clima: 1, feedbacks: 2 }
 
 export default function RetencaoEngajamentoPage() {
+  const { profile } = useAuth()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(0)
+  const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
 
   useEffect(() => {
     const q = searchParams.get('tab')
     if (q && q in TAB_BY_QUERY) setActiveTab(TAB_BY_QUERY[q])
   }, [searchParams])
+
+  // Cruzamento com perfil comportamental do Profiler — issue #56. Ainda
+  // 'nao_implementado' (ver src/lib/profilerContract.ts) até o Profiler ter
+  // motor de cálculo de verdade.
+  useEffect(() => {
+    if (profile) getProfilerResumo(profile.id).then(setProfiler)
+  }, [profile])
 
   const TABS = ['eNPS', 'Pesquisa de Clima', 'Feedbacks 360°']
 
@@ -33,6 +44,14 @@ export default function RetencaoEngajamentoPage() {
     <AppShell navItems={NAV_ITEMS} pageTitle="RETENÇÃO E ENGAJAMENTO">
       <div className="space-y-6">
         <DemoDataBanner />
+
+        {profiler && (
+          <p className="text-xs italic text-neutral-500">
+            Cruzamento com perfil comportamental (Profiler): {profiler.statusProfiler === 'nao_implementado'
+              ? 'ainda não disponível — motor de cálculo do Profiler não implementado.'
+              : profiler.perfilPredominante}
+          </p>
+        )}
 
         {/* KPI Cards — nenhuma pesquisa/eNPS foi aplicada ainda */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

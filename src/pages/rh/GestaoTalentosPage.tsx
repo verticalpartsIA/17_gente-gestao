@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/app/AppShell'
 import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
+import { useAuth } from '@/lib/auth'
+import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -47,10 +49,18 @@ function fmtBrl(val: number) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function GestaoTalentosPage() {
+  const { profile } = useAuth()
   const [searchParams] = useSearchParams()
   const urlTab = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(0)
   const [selectedCargo, setSelectedCargo] = useState<typeof CARGOS[0] | null>(null)
+  const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
+
+  // Aderência de perfil ao cargo deveria vir do Profiler — issue #56. Ainda
+  // 'nao_implementado' (ver src/lib/profilerContract.ts).
+  useEffect(() => {
+    if (profile) getProfilerResumo(profile.id).then(setProfiler)
+  }, [profile])
 
   // O menu do Dashboard tem um link próprio para "Admissão Digital"
   // (?tab=admissao) que essa página ainda não implementa como aba real —
@@ -111,6 +121,14 @@ export default function GestaoTalentosPage() {
             </button>
           ))}
         </div>
+
+        {profiler && activeTab === 0 && (
+          <p className="text-xs italic text-neutral-500">
+            Aderência de perfil comportamental ao cargo (Profiler): {profiler.statusProfiler === 'nao_implementado'
+              ? 'ainda não disponível — motor de cálculo do Profiler não implementado.'
+              : profiler.perfilPredominante}
+          </p>
+        )}
 
         {/* Tab 0 — Plano de Cargos */}
         {activeTab === 0 && (

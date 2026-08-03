@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { useAuth } from '@/lib/auth'
+import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import { NovaRequisicaoVagaModal } from '@/components/rh/NovaRequisicaoVagaModal'
 import { NovoCandidatoModal } from '@/components/rh/NovoCandidatoModal'
 import { NovaEntrevistaModal } from '@/components/rh/NovaEntrevistaModal'
@@ -158,6 +159,14 @@ const HOJE = new Date().toISOString().slice(0, 10)
 
 export default function AtracaoPage() {
   const { profile } = useAuth()
+  const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
+
+  // Comparação entre perfil esperado da vaga e perfil comportamental do
+  // candidato deveria vir do Profiler — issue #56. Ainda 'nao_implementado'
+  // (ver src/lib/profilerContract.ts).
+  useEffect(() => {
+    if (profile) getProfilerResumo(profile.id).then(setProfiler)
+  }, [profile])
   const [activeTab, setActiveTab] = useState(0)
   const [modalAberto, setModalAberto] = useState(false)
 
@@ -565,6 +574,14 @@ export default function AtracaoPage() {
               </label>
               {carregandoPipeline && <Loader2 className="mt-5 h-4 w-4 animate-spin text-neutral-400" />}
             </div>
+
+            {profiler && (
+              <p className="text-xs italic text-neutral-500">
+                Comparação de perfil esperado da vaga x perfil comportamental do candidato (Profiler): {profiler.statusProfiler === 'nao_implementado'
+                  ? 'ainda não disponível — motor de cálculo do Profiler não implementado.'
+                  : profiler.perfilPredominante}
+              </p>
+            )}
 
             {erroPipeline && (
               <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">

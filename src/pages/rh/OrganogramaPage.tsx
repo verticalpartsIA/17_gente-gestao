@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { supabase } from '@/lib/supabase'
 import { buildOrgForest, treeDepth, deptVisibleIds, type ProfileRow, type OrgNode } from '@/lib/orgTree'
+import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import {
   Users,
   Building2,
@@ -140,6 +141,14 @@ export default function OrganogramaPage() {
   const [selectedPerson, setSelectedPerson] = useState<OrgNode | null>(null)
   const [deptFilter, setDeptFilter] = useState<string>('Todos')
   const [showUnpositioned, setShowUnpositioned] = useState(false)
+  const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
+
+  // Composição comportamental por pessoa/equipe deveria vir do Profiler —
+  // issue #56. Ainda 'nao_implementado' (ver src/lib/profilerContract.ts).
+  useEffect(() => {
+    if (selectedPerson) getProfilerResumo(selectedPerson.id).then(setProfiler)
+    else setProfiler(null)
+  }, [selectedPerson])
 
   useEffect(() => {
     async function load() {
@@ -318,6 +327,16 @@ export default function OrganogramaPage() {
                     </div>
                   )
                 })()}
+                {profiler && (
+                  <div className="rounded bg-neutral-50 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Perfil comportamental (Profiler)</p>
+                    <p className="mt-1 text-sm text-neutral-500 italic">
+                      {profiler.statusProfiler === 'nao_implementado'
+                        ? 'Ainda não disponível — motor de cálculo do Profiler não implementado.'
+                        : profiler.perfilPredominante}
+                    </p>
+                  </div>
+                )}
                 {selectedPerson.reports.length > 0 && (
                   <div className="rounded bg-neutral-50 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Subordinados Diretos ({selectedPerson.reports.length})</p>
