@@ -23,6 +23,8 @@ import {
 } from '@/lib/treinamentosRepo'
 import { PosicionarColaboradorModal } from '@/components/rh/PosicionarColaboradorModal'
 import { listarPosicionamentos, getCelula, type Posicionamento } from '@/lib/nineBoxRepo'
+import { NovaAcaoPdiModal } from '@/components/rh/NovaAcaoPdiModal'
+import { listarAcoes, progressoAcao, type AcaoPDI } from '@/lib/pdiRepo'
 import {
   listarObjetivos,
   listarCiclos,
@@ -58,11 +60,10 @@ import {
 // AVD e PDI ainda não têm tabela real no Supabase — inclusive alguns
 // registros fabricados citavam o CEO real (Gelson Simões) em metas/mentorias
 // que ele nunca registrou. Arrays vazios até existir integração de verdade.
-// Metas/OKR, Treinamentos e Matriz 9-Box já são reais — ver
-// rh_metas_*/src/lib/metasRepo.ts, rh_treinamentos*/src/lib/treinamentosRepo.ts
-// e rh_nine_box_posicionamentos/src/lib/nineBoxRepo.ts.
+// Metas/OKR, Treinamentos, Matriz 9-Box e PDI já são reais — ver
+// rh_metas_*/src/lib/metasRepo.ts, rh_treinamentos*/src/lib/treinamentosRepo.ts,
+// rh_nine_box_posicionamentos/src/lib/nineBoxRepo.ts e rh_pdi_acoes/src/lib/pdiRepo.ts.
 const AVD_DATA: { initials: string; name: string; dept: string; autoav: number | null; gestor: number | null; pares: number | null; media: number | null; status: string }[] = []
-const PDI_AP: { titulo: string; descricao: string; prazo: string; progresso: number; status: string }[] = []
 
 const NIVEL_LABEL: Record<Objetivo['nivel'], string> = { corporativa: 'Corporativa', area: 'Área', individual: 'Individual' }
 
@@ -87,12 +88,13 @@ function avdStatusBadge(status: string) {
   return <Badge>{status}</Badge>
 }
 
-function pdiStatusBadge(status: string) {
-  if (status === 'Concluído')    return <Badge variant="success">{status}</Badge>
-  if (status === 'Em andamento') return <Badge variant="warning">{status}</Badge>
-  if (status === 'Não iniciado') return <Badge variant="default">{status}</Badge>
-  return <Badge>{status}</Badge>
+const PDI_STATUS_LABEL: Record<AcaoPDI['status'], string> = { concluido: 'Concluído', em_andamento: 'Em andamento', nao_iniciado: 'Não iniciado' }
+function pdiStatusBadge(status: AcaoPDI['status']) {
+  if (status === 'concluido')    return <Badge variant="success">{PDI_STATUS_LABEL[status]}</Badge>
+  if (status === 'em_andamento') return <Badge variant="warning">{PDI_STATUS_LABEL[status]}</Badge>
+  return <Badge variant="default">{PDI_STATUS_LABEL[status]}</Badge>
 }
+const PDI_TIPO_LABEL: Record<AcaoPDI['tipo'], string> = { curso: 'Curso', mentoria: 'Mentoria', projeto: 'Projeto', leitura: 'Leitura', outro: 'Outro' }
 
 function mediaColor(media: number | null) {
   if (media === null) return 'text-neutral-400'
@@ -191,6 +193,13 @@ export default function PerformancePage() {
   const [ciclo9box, setCiclo9box] = useState('')
   const [modal9boxAberto, setModal9boxAberto] = useState(false)
 
+  // PDI — dado real (rh_pdi_acoes, src/lib/pdiRepo.ts)
+  const [acoesPdi, setAcoesPdi] = useState<AcaoPDI[]>([])
+  const [progressosPdi, setProgressosPdi] = useState<Record<string, number>>({})
+  const [carregandoPdi, setCarregandoPdi] = useState(false)
+  const [erroPdi, setErroPdi] = useState<string | null>(null)
+  const [modalPdiAberto, setModalPdiAberto] = useState(false)
+
   const urlTab = searchParams.get('tab')
 
   useEffect(() => {
@@ -280,6 +289,22 @@ export default function PerformancePage() {
     if (activeTab === 2) carregar9box()
   }, [activeTab, ciclo9box])
 
+  const carregarPdi = () => {
+    if (!profile || !persistenciaDisponivel()) return
+    setCarregandoPdi(true)
+    setErroPdi(null)
+    listarAcoes(profile.id)
+      .then(async acoes => {
+        setAcoesPdi(acoes)
+        const entradas = await Promise.all(acoes.map(async a => [a.id, await progressoAcao(a)] as const))
+        setProgressosPdi(Object.fromEntries(entradas))
+      })
+      .catch(e => setErroPdi(e instanceof Error ? e.message : 'Erro ao carregar o PDI.'))
+      .finally(() => setCarregandoPdi(false))
+  }
+
+  useEffect(carregarPdi, [profile?.id])
+
   useEffect(() => {
     if (activeTab !== 4 || !persistenciaDisponivel()) return
     setCarregandoAnalise(true)
@@ -359,7 +384,7 @@ export default function PerformancePage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard icon={ClipboardCheck} color="green"  label="AVALIAÇÕES CONCLUÍDAS" value="0" sub="Módulo ainda não integrado" />
           <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value={String(kpisMetas.ativas)} sub="Dado real (rh_metas)" />
-          <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value="0"     sub="Módulo ainda não integrado" />
+          <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value={String(acoesPdi.filter(a => a.status !== 'concluido').length)} sub="Dado real (rh_pdi_acoes)" />
           <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value={String(treinamentos.length)} sub="Dado real (rh_treinamentos)" />
         </div>
 
@@ -686,15 +711,15 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 5 — PDI */}
+        {/* Tab 5 — PDI (dado real, rh_pdi_acoes) */}
         {activeTab === 5 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-neutral-900">Planos de Desenvolvimento Individual</h3>
-                <p className="text-xs text-neutral-500">Ciclo 2026</p>
+                <h3 className="font-bold text-neutral-900">Meu Plano de Desenvolvimento Individual</h3>
+                <p className="text-xs text-neutral-500">Suas ações de desenvolvimento — visível também pro seu gestor direto</p>
               </div>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Ação ainda não está conectado ao banco de dados.')}>Nova Ação</Button>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setModalPdiAberto(true)} disabled={!profile}>Nova Ação</Button>
             </div>
 
             {profiler && (
@@ -704,38 +729,46 @@ export default function PerformancePage() {
                   : profiler.perfilPredominante}
               </p>
             )}
-            {PDI_AP.length === 0 && (
-              <p className="py-8 text-center text-sm text-neutral-400">Nenhum PDI cadastrado ainda.</p>
+            {erroPdi && (
+              <p className="text-xs text-red-600 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {erroPdi}</p>
             )}
-            {PDI_AP.map((item, i) => (
-              <Card key={i} theme="light">
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-start justify-between gap-4">
+            {carregandoPdi && <Loader2 className="h-4 w-4 animate-spin text-neutral-400 mx-auto my-6" />}
+            {!carregandoPdi && acoesPdi.length === 0 && (
+              <p className="py-8 text-center text-sm text-neutral-400">Nenhuma ação de PDI cadastrada ainda.</p>
+            )}
+            {acoesPdi.map(item => {
+              const progresso = progressosPdi[item.id] ?? item.progresso
+              return (
+                <Card key={item.id} theme="light">
+                  <CardContent className="pt-4 pb-4">
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold text-neutral-900">{item.titulo}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-neutral-900">{item.titulo}</p>
+                          <span className="text-[11px] text-neutral-400">{PDI_TIPO_LABEL[item.tipo]}</span>
+                        </div>
                         {pdiStatusBadge(item.status)}
                       </div>
-                      <p className="text-xs text-neutral-500">{item.descricao}</p>
-                      {item.prazo !== '—' && (
-                        <p className="text-xs text-neutral-400 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Prazo: {item.prazo}
-                        </p>
-                      )}
+                      {item.descricao && <p className="text-xs text-neutral-500">{item.descricao}</p>}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+                        {item.prazo && (
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Prazo: {new Date(item.prazo).toLocaleDateString('pt-BR')}</span>
+                        )}
+                        {item.treinamento_id && (
+                          <span className="italic">Sincronizado do treinamento "{item.treinamento?.nome ?? '—'}"</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 rounded bg-neutral-100 overflow-hidden">
-                          <div
-                            className={`h-full rounded ${progressColor(item.progresso)}`}
-                            style={{ width: `${item.progresso}%` }}
-                          />
+                          <div className={`h-full rounded ${progressColor(progresso)}`} style={{ width: `${progresso}%` }} />
                         </div>
-                        <span className="text-xs font-bold text-neutral-600 w-8 text-right">{item.progresso}%</span>
+                        <span className="text-xs font-bold text-neutral-600 w-8 text-right">{progresso}%</span>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
 
@@ -931,6 +964,9 @@ export default function PerformancePage() {
 
       <NovoTreinamentoModal open={modalTreinamentoAberto} onClose={() => setModalTreinamentoAberto(false)} onSalvo={carregarTreinamentos} />
       <PosicionarColaboradorModal open={modal9boxAberto} onClose={() => setModal9boxAberto(false)} onSalvo={carregar9box} />
+      {profile && (
+        <NovaAcaoPdiModal open={modalPdiAberto} onClose={() => setModalPdiAberto(false)} onSalvo={carregarPdi} colaboradorPadraoId={profile.id} />
+      )}
     </AppShell>
   )
 }
