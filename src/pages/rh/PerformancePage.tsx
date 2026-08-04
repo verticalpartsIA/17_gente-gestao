@@ -13,6 +13,14 @@ import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
 import { listarDepartamentos } from '@/lib/cargosRepo'
 import { persistenciaDisponivel } from '@/lib/contratacaoRepo'
 import { NovoObjetivoModal } from '@/components/rh/NovoObjetivoModal'
+import { NovoTreinamentoModal } from '@/components/rh/NovoTreinamentoModal'
+import {
+  listarTreinamentos,
+  listarAudiencia,
+  marcarConclusao,
+  type TreinamentoComProgresso,
+  type MembroAudiencia,
+} from '@/lib/treinamentosRepo'
 import {
   listarObjetivos,
   listarCiclos,
@@ -40,19 +48,19 @@ import {
   AlertTriangle,
   X,
   Send,
+  Check,
 } from 'lucide-react'
 
 // ── Data from HTML prototype ──────────────────────────────────────────────────
 
-// AVD, 9-Box, PDI e Treinamentos ainda não têm tabela real no Supabase —
-// inclusive alguns registros fabricados citavam o CEO real (Gelson Simões)
-// em metas/mentorias que ele nunca registrou. Arrays vazios até existir
-// integração de verdade. Metas/OKR (issue GestãoMetas.md) já é real — ver
-// rh_metas_* / src/lib/metasRepo.ts.
+// AVD, 9-Box e PDI ainda não têm tabela real no Supabase — inclusive alguns
+// registros fabricados citavam o CEO real (Gelson Simões) em metas/mentorias
+// que ele nunca registrou. Arrays vazios até existir integração de verdade.
+// Metas/OKR e Treinamentos já são reais — ver rh_metas_*/src/lib/metasRepo.ts
+// e rh_treinamentos*/src/lib/treinamentosRepo.ts.
 const AVD_DATA: { initials: string; name: string; dept: string; autoav: number | null; gestor: number | null; pares: number | null; media: number | null; status: string }[] = []
 const NINEBOX_CELLS: { label: string; desc: string; perf: number; pot: number; color: string; people: string[] }[] = []
 const PDI_AP: { titulo: string; descricao: string; prazo: string; progresso: number; status: string }[] = []
-const TREINAMENTOS: { nome: string; tipo: string; concluidos: number; total: number; progresso: number }[] = []
 
 const NIVEL_LABEL: Record<Objetivo['nivel'], string> = { corporativa: 'Corporativa', area: 'Área', individual: 'Individual' }
 
@@ -165,6 +173,15 @@ export default function PerformancePage() {
   const [analise, setAnalise] = useState<AnalisePerformance | null>(null)
   const [carregandoAnalise, setCarregandoAnalise] = useState(false)
 
+  // Treinamentos — dado real (rh_treinamentos*, src/lib/treinamentosRepo.ts)
+  const [treinamentos, setTreinamentos] = useState<TreinamentoComProgresso[]>([])
+  const [carregandoTreinamentos, setCarregandoTreinamentos] = useState(false)
+  const [erroTreinamentos, setErroTreinamentos] = useState<string | null>(null)
+  const [modalTreinamentoAberto, setModalTreinamentoAberto] = useState(false)
+  const [treinamentoSelecionado, setTreinamentoSelecionado] = useState<TreinamentoComProgresso | null>(null)
+  const [audiencia, setAudiencia] = useState<MembroAudiencia[]>([])
+  const [marcandoConclusao, setMarcandoConclusao] = useState<string | null>(null)
+
   const urlTab = searchParams.get('tab')
 
   useEffect(() => {
@@ -201,6 +218,44 @@ export default function PerformancePage() {
   }, [])
 
   useEffect(carregarMetas, [filtroCiclo, filtroDepartamento, filtroRegime])
+
+  const carregarTreinamentos = () => {
+    if (!persistenciaDisponivel()) return
+    setCarregandoTreinamentos(true)
+    setErroTreinamentos(null)
+    listarTreinamentos()
+      .then(setTreinamentos)
+      .catch(e => setErroTreinamentos(e instanceof Error ? e.message : 'Erro ao carregar treinamentos.'))
+      .finally(() => setCarregandoTreinamentos(false))
+  }
+
+  useEffect(carregarTreinamentos, [])
+
+  useEffect(() => {
+    if (!treinamentoSelecionado) return
+    const atualizado = treinamentos.find(t => t.id === treinamentoSelecionado.id)
+    if (atualizado) setTreinamentoSelecionado(atualizado)
+  }, [treinamentos])
+
+  function abrirTreinamento(t: TreinamentoComProgresso) {
+    setTreinamentoSelecionado(t)
+    listarAudiencia(t.id).then(setAudiencia).catch(() => setAudiencia([]))
+  }
+
+  async function handleMarcarConclusao(colaboradorId: string) {
+    if (!profile || !treinamentoSelecionado) return
+    setMarcandoConclusao(colaboradorId)
+    setErroTreinamentos(null)
+    try {
+      await marcarConclusao(treinamentoSelecionado.id, colaboradorId, profile.id)
+      setAudiencia(await listarAudiencia(treinamentoSelecionado.id))
+      carregarTreinamentos()
+    } catch (e) {
+      setErroTreinamentos(e instanceof Error ? e.message : 'Erro ao registrar conclusão.')
+    } finally {
+      setMarcandoConclusao(null)
+    }
+  }
 
   useEffect(() => {
     if (activeTab !== 4 || !persistenciaDisponivel()) return
@@ -278,7 +333,7 @@ export default function PerformancePage() {
           <KpiCard icon={ClipboardCheck} color="green"  label="AVALIAÇÕES CONCLUÍDAS" value="0" sub="Módulo ainda não integrado" />
           <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value={String(kpisMetas.ativas)} sub="Dado real (rh_metas)" />
           <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value="0"     sub="Módulo ainda não integrado" />
-          <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value="0"     sub="Módulo ainda não integrado" />
+          <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value={String(treinamentos.length)} sub="Dado real (rh_treinamentos)" />
         </div>
 
         {/* Tabs */}
@@ -642,40 +697,42 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 6 — Treinamentos */}
+        {/* Tab 6 — Treinamentos (dado real, rh_treinamentos*) */}
         {activeTab === 6 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
-              <CardTitle>Treinamentos — Ciclo 2026</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Novo Treinamento ainda não está conectado ao banco de dados.')}>Novo Treinamento</Button>
+              <CardTitle>Treinamentos</CardTitle>
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setModalTreinamentoAberto(true)}>Novo Treinamento</Button>
             </CardHeader>
             <CardContent className="divide-y divide-neutral-100 px-5">
-              {TREINAMENTOS.length === 0 && (
+              {erroTreinamentos && (
+                <p className="py-3 text-xs text-red-600 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {erroTreinamentos}</p>
+              )}
+              {carregandoTreinamentos && <Loader2 className="h-4 w-4 animate-spin text-neutral-400 mx-auto my-6" />}
+              {!carregandoTreinamentos && treinamentos.length === 0 && (
                 <p className="py-8 text-center text-sm text-neutral-400">Nenhum treinamento cadastrado ainda.</p>
               )}
-              {TREINAMENTOS.map((t, i) => (
-                <div key={i} className="py-4 space-y-2">
+              {treinamentos.map(t => (
+                <button key={t.id} onClick={() => abrirTreinamento(t)} className="block w-full text-left py-4 space-y-2 hover:bg-neutral-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-neutral-900">{t.nome}</span>
-                      <Badge variant={t.tipo === 'Obrigatório' ? 'danger' : 'info'}>{t.tipo}</Badge>
+                      <Badge variant={t.tipo === 'obrigatorio' ? 'danger' : 'info'}>{t.tipo === 'obrigatorio' ? 'Obrigatório' : 'Opcional'}</Badge>
+                      <span className="text-[11px] text-neutral-400">
+                        {t.nivel_publico === 'empresa' ? 'Empresa toda' : t.nivel_publico === 'departamento' ? t.departamento : 'Individual'}
+                      </span>
                     </div>
-                    <span className="text-sm text-neutral-500">{t.concluidos}/{t.total} concluídos</span>
+                    <span className="text-sm text-neutral-500">{t.concluidos}/{t.audienciaTotal} concluídos</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-3 rounded bg-neutral-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded ${progressColor(t.progresso)}`}
-                        style={{ width: `${t.progresso}%` }}
-                      />
+                      <div className={`h-full rounded ${progressColor(t.progresso)}`} style={{ width: `${t.progresso}%` }} />
                     </div>
                     <span className={`text-sm font-bold w-10 text-right ${
-                      t.progresso === 100 ? 'text-green-600' :
-                      t.progresso >= 70 ? 'text-blue-600' :
-                      'text-yellow-600'
+                      t.progresso === 100 ? 'text-green-600' : t.progresso >= 70 ? 'text-blue-600' : 'text-yellow-600'
                     }`}>{t.progresso}%</span>
                   </div>
-                </div>
+                </button>
               ))}
             </CardContent>
           </Card>
@@ -768,6 +825,69 @@ export default function PerformancePage() {
       )}
 
       <NovoObjetivoModal open={modalObjetivoAberto} onClose={() => setModalObjetivoAberto(false)} onSalvo={carregarMetas} />
+
+      {/* Side Panel — Treinamento: audiência + marcar conclusão */}
+      {treinamentoSelecionado && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setTreinamentoSelecionado(null)} />
+          <div className="relative z-50 w-96 bg-white shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">Detalhe do Treinamento</h3>
+              <button onClick={() => setTreinamentoSelecionado(null)} className="text-neutral-400 hover:text-neutral-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-400">Treinamento</p>
+                <p className="mt-1 text-base font-bold text-neutral-900">{treinamentoSelecionado.nome}</p>
+                {treinamentoSelecionado.descricao && <p className="mt-1 text-xs text-neutral-500">{treinamentoSelecionado.descricao}</p>}
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant={treinamentoSelecionado.tipo === 'obrigatorio' ? 'danger' : 'info'}>
+                    {treinamentoSelecionado.tipo === 'obrigatorio' ? 'Obrigatório' : 'Opcional'}
+                  </Badge>
+                  {treinamentoSelecionado.carga_horaria != null && <span className="text-xs text-neutral-500">{treinamentoSelecionado.carga_horaria}h</span>}
+                  {treinamentoSelecionado.data_limite && (
+                    <span className="text-xs text-neutral-500 flex items-center gap-1"><Clock className="h-3 w-3" /> até {new Date(treinamentoSelecionado.data_limite).toLocaleDateString('pt-BR')}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                  Audiência ({treinamentoSelecionado.concluidos}/{treinamentoSelecionado.audienciaTotal} concluídos)
+                </p>
+                {audiencia.map(m => (
+                  <div key={m.colaboradorId} className="flex items-center justify-between gap-2 rounded border border-neutral-200 p-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm text-neutral-800 truncate">{m.nome}</p>
+                      <p className="text-[11px] text-neutral-400">
+                        {m.status === 'concluido' && m.concluidoEm ? `Concluído em ${new Date(m.concluidoEm).toLocaleDateString('pt-BR')}` : m.department}
+                      </p>
+                    </div>
+                    {m.status === 'concluido' ? (
+                      <Badge variant="success"><Check className="h-3 w-3" /></Badge>
+                    ) : m.status === 'atrasado' ? (
+                      <Badge variant="danger">Atrasado</Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        loading={marcandoConclusao === m.colaboradorId}
+                        onClick={() => handleMarcarConclusao(m.colaboradorId)}
+                      >
+                        Marcar concluído
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <NovoTreinamentoModal open={modalTreinamentoAberto} onClose={() => setModalTreinamentoAberto(false)} onSalvo={carregarTreinamentos} />
     </AppShell>
   )
 }
