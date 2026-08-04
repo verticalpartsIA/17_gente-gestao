@@ -21,6 +21,8 @@ import {
   type TreinamentoComProgresso,
   type MembroAudiencia,
 } from '@/lib/treinamentosRepo'
+import { PosicionarColaboradorModal } from '@/components/rh/PosicionarColaboradorModal'
+import { listarPosicionamentos, getCelula, type Posicionamento } from '@/lib/nineBoxRepo'
 import {
   listarObjetivos,
   listarCiclos,
@@ -53,13 +55,13 @@ import {
 
 // ── Data from HTML prototype ──────────────────────────────────────────────────
 
-// AVD, 9-Box e PDI ainda não têm tabela real no Supabase — inclusive alguns
+// AVD e PDI ainda não têm tabela real no Supabase — inclusive alguns
 // registros fabricados citavam o CEO real (Gelson Simões) em metas/mentorias
 // que ele nunca registrou. Arrays vazios até existir integração de verdade.
-// Metas/OKR e Treinamentos já são reais — ver rh_metas_*/src/lib/metasRepo.ts
-// e rh_treinamentos*/src/lib/treinamentosRepo.ts.
+// Metas/OKR, Treinamentos e Matriz 9-Box já são reais — ver
+// rh_metas_*/src/lib/metasRepo.ts, rh_treinamentos*/src/lib/treinamentosRepo.ts
+// e rh_nine_box_posicionamentos/src/lib/nineBoxRepo.ts.
 const AVD_DATA: { initials: string; name: string; dept: string; autoav: number | null; gestor: number | null; pares: number | null; media: number | null; status: string }[] = []
-const NINEBOX_CELLS: { label: string; desc: string; perf: number; pot: number; color: string; people: string[] }[] = []
 const PDI_AP: { titulo: string; descricao: string; prazo: string; progresso: number; status: string }[] = []
 
 const NIVEL_LABEL: Record<Objetivo['nivel'], string> = { corporativa: 'Corporativa', area: 'Área', individual: 'Individual' }
@@ -182,6 +184,13 @@ export default function PerformancePage() {
   const [audiencia, setAudiencia] = useState<MembroAudiencia[]>([])
   const [marcandoConclusao, setMarcandoConclusao] = useState<string | null>(null)
 
+  // Matriz 9-Box — dado real (rh_nine_box_posicionamentos, src/lib/nineBoxRepo.ts)
+  const [posicionamentos, setPosicionamentos] = useState<Posicionamento[]>([])
+  const [carregando9box, setCarregando9box] = useState(false)
+  const [erro9box, setErro9box] = useState<string | null>(null)
+  const [ciclo9box, setCiclo9box] = useState('')
+  const [modal9boxAberto, setModal9boxAberto] = useState(false)
+
   const urlTab = searchParams.get('tab')
 
   useEffect(() => {
@@ -257,6 +266,20 @@ export default function PerformancePage() {
     }
   }
 
+  const carregar9box = () => {
+    if (!persistenciaDisponivel()) return
+    setCarregando9box(true)
+    setErro9box(null)
+    listarPosicionamentos(ciclo9box || undefined)
+      .then(setPosicionamentos)
+      .catch(e => setErro9box(e instanceof Error ? e.message : 'Erro ao carregar a matriz.'))
+      .finally(() => setCarregando9box(false))
+  }
+
+  useEffect(() => {
+    if (activeTab === 2) carregar9box()
+  }, [activeTab, ciclo9box])
+
   useEffect(() => {
     if (activeTab !== 4 || !persistenciaDisponivel()) return
     setCarregandoAnalise(true)
@@ -299,11 +322,15 @@ export default function PerformancePage() {
     }
   }
 
-  // Build 9-box grid: 3x3 matrix, rows = potencial (2→0 top-to-bottom), cols = performance (0→2)
-  // pot=2: top row | pot=1: mid row | pot=0: bottom row
-  // perf=0: left col | perf=1: mid col | perf=2: right col
-  const getCell = (pot: number, perf: number) =>
-    NINEBOX_CELLS.find(c => c.pot === pot && c.perf === perf)
+  // Grid 3x3: linhas = potencial (3→1 de cima pra baixo), colunas = performance (1→3).
+  function pessoasNaCelula(perf: number, pot: number): Posicionamento[] {
+    return posicionamentos.filter(p => p.nota_performance === perf && p.nota_potencial === pot)
+  }
+  function iniciais(nome: string) {
+    const partes = nome.trim().split(/\s+/)
+    if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase()
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
+  }
 
   if (urlTab && urlTab in NO_CONTENT_LABEL) {
     return (
@@ -411,60 +438,75 @@ export default function PerformancePage() {
         {/* Tab 1 — Avaliação de Experiência (45 / 90 dias) */}
         {activeTab === 1 && <AvaliacaoExperienciaTab />}
 
-        {/* Tab 2 — Matriz 9-Box */}
+        {/* Tab 2 — Matriz 9-Box (dado real, rh_nine_box_posicionamentos — visível só pro gestor direto e Administrador) */}
         {activeTab === 2 && (
           <Card theme="light">
-            <CardHeader className="border-b border-neutral-200 pb-4">
-              <CardTitle>Matriz 9-Box — Performance × Potencial</CardTitle>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-neutral-200 pb-4">
+              <div>
+                <CardTitle>Matriz 9-Box — Performance × Potencial</CardTitle>
+                <p className="mt-1 text-xs text-neutral-500">Você só vê os posicionamentos da sua equipe (ou todos, se Administrador).</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={ciclo9box} onChange={e => setCiclo9box(e.target.value)} className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-xs">
+                  <option value="">Todos os ciclos</option>
+                  {ciclos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setModal9boxAberto(true)}>Posicionar Colaborador</Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {/* 3x3 grid */}
-              <div className="overflow-x-auto">
-                <div className="min-w-[480px]">
-                  {/* col headers */}
-                  <div className="flex mb-1 ml-14">
-                    {['Baixa Performance', 'Média Performance', 'Alta Performance'].map((l, i) => (
-                      <div key={i} className="flex-1 text-center text-[10px] font-bold uppercase tracking-wider text-neutral-400">{l}</div>
+              {erro9box && (
+                <p className="pb-3 text-xs text-red-600 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {erro9box}</p>
+              )}
+              {carregando9box && <Loader2 className="h-4 w-4 animate-spin text-neutral-400 mx-auto my-6" />}
+              {!carregando9box && (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[480px]">
+                    <div className="flex mb-1 ml-14">
+                      {['Baixa Performance', 'Média Performance', 'Alta Performance'].map((l, i) => (
+                        <div key={i} className="flex-1 text-center text-[10px] font-bold uppercase tracking-wider text-neutral-400">{l}</div>
+                      ))}
+                    </div>
+                    {[3, 2, 1].map(pot => (
+                      <div key={pot} className="flex">
+                        <div className="w-14 flex items-center justify-center">
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-wider text-neutral-400"
+                            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                          >
+                            {pot === 3 ? 'Alto Pot.' : pot === 2 ? 'Médio Pot.' : 'Baixo Pot.'}
+                          </span>
+                        </div>
+                        {[1, 2, 3].map(perf => {
+                          const cell = getCelula(perf, pot)
+                          const pessoas = pessoasNaCelula(perf, pot)
+                          return (
+                            <div key={perf} className={`flex-1 m-1 rounded-lg border p-3 min-h-[100px] ${cell.cor}`}>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-600 mb-2">{cell.label}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {pessoas.map(p => (
+                                  <span
+                                    key={p.id}
+                                    title={`${p.colaborador?.name ?? '—'}${p.justificativa ? ` — ${p.justificativa}` : ''}`}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-black cursor-default"
+                                  >
+                                    {p.colaborador ? iniciais(p.colaborador.name) : '?'}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
                     ))}
                   </div>
-                  {/* rows */}
-                  {[2, 1, 0].map(pot => (
-                    <div key={pot} className="flex">
-                      {/* row label */}
-                      <div className="w-14 flex items-center justify-center">
-                        <span
-                          className="text-[10px] font-bold uppercase tracking-wider text-neutral-400"
-                          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-                        >
-                          {pot === 2 ? 'Alto Pot.' : pot === 1 ? 'Médio Pot.' : 'Baixo Pot.'}
-                        </span>
-                      </div>
-                      {/* cells */}
-                      {[0, 1, 2].map(perf => {
-                        const cell = getCell(pot, perf)
-                        return (
-                          <div
-                            key={perf}
-                            className={`flex-1 m-1 rounded-lg border p-3 min-h-[100px] ${cell?.color ?? 'bg-neutral-50 border-neutral-200'}`}
-                          >
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-600 mb-2">{cell?.label}</p>
-                            <div className="flex flex-wrap gap-1">
-                              {cell?.people.map(p => (
-                                <span
-                                  key={p}
-                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-black"
-                                >
-                                  {p}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ))}
+                  {posicionamentos.length === 0 && (
+                    <p className="py-6 text-center text-sm text-neutral-400">
+                      Nenhum posicionamento ainda — clique em "Posicionar Colaborador" pra começar a calibração.
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -888,6 +930,7 @@ export default function PerformancePage() {
       )}
 
       <NovoTreinamentoModal open={modalTreinamentoAberto} onClose={() => setModalTreinamentoAberto(false)} onSalvo={carregarTreinamentos} />
+      <PosicionarColaboradorModal open={modal9boxAberto} onClose={() => setModal9boxAberto(false)} onSalvo={carregar9box} />
     </AppShell>
   )
 }
