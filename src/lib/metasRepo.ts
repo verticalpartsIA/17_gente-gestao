@@ -285,3 +285,91 @@ export async function calcularKpis(cicloId?: string): Promise<KpisMetas> {
     concluidasPct: total > 0 ? Math.round((concluidas / total) * 100) : 0,
   }
 }
+
+export interface AnalisePerformance {
+  mediaGeral: number
+  totalObjetivos: number
+  concluidosPct: number
+  atrasados: Objetivo[]
+  porDepartamento: { departamento: string; media: number; total: number }[]
+  porCiclo: { cicloId: string; cicloNome: string; dataInicio: string; media: number; total: number }[]
+  porRegime: { regime: 'CLT' | 'PJ'; media: number; total: number }[]
+  distribuicaoStatus: { status: ObjetivoStatus; total: number; pct: number }[]
+}
+
+/**
+ * Painel "Análise de Performance" — 100% agregação sobre rh_metas_* já
+ * existente (nenhuma tabela nova). Avaliação de Desempenho e 9-Box entram
+ * aqui como dimensões extras quando ganharem motor próprio — por ora só
+ * Metas/OKR tem dado real pra analisar.
+ */
+export async function calcularAnalisePerformance(): Promise<AnalisePerformance> {
+  if (isMockMode) {
+    return { mediaGeral: 0, totalObjetivos: 0, concluidosPct: 0, atrasados: [], porDepartamento: [], porCiclo: [], porRegime: [], distribuicaoStatus: [] }
+  }
+
+  const [objetivos, ciclos, { data: cargos }] = await Promise.all([
+    listarObjetivos({}),
+    listarCiclos(),
+    db.from('rh_cargos').select('nome, departamento, regime') as Promise<{ data: any[] }>,
+  ])
+
+  const regimeDoCargo = new Map<string, 'CLT' | 'PJ'>((cargos ?? []).map((c: any) => [`${c.nome}::${c.departamento}`, c.regime]))
+  const cicloPorId = new Map(ciclos.map(c => [c.id, c]))
+
+  const total = objetivos.length
+  const mediaGeral = total > 0 ? Math.round(objetivos.reduce((s, o) => s + progressoObjetivo(o), 0) / total) : 0
+  const concluidos = objetivos.filter(o => o.status === 'concluido').length
+  const atrasados = objetivos.filter(o => o.status === 'atrasado')
+
+  function agrupar<K extends string>(chave: (o: Objetivo) => K | null): Map<K, Objetivo[]> {
+    const mapa = new Map<K, Objetivo[]>()
+    for (const o of objetivos) {
+      const k = chave(o)
+      if (k === null) continue
+      if (!mapa.has(k)) mapa.set(k, [])
+      mapa.get(k)!.push(o)
+    }
+    return mapa
+  }
+
+  const porDepartamentoMapa = agrupar(o => o.departamento ?? o.colaborador?.department ?? null)
+  const porDepartamento = Array.from(porDepartamentoMapa.entries())
+    .map(([departamento, lista]) => ({
+      departamento,
+      media: Math.round(lista.reduce((s, o) => s + progressoObjetivo(o), 0) / lista.length),
+      total: lista.length,
+    }))
+    .sort((a, b) => b.media - a.media)
+
+  const porCicloMapa = agrupar(o => o.ciclo_id as string)
+  const porCiclo = Array.from(porCicloMapa.entries())
+    .map(([cicloId, lista]) => ({
+      cicloId,
+      cicloNome: cicloPorId.get(cicloId)?.nome ?? 'Ciclo removido',
+      dataInicio: cicloPorId.get(cicloId)?.data_inicio ?? '',
+      media: Math.round(lista.reduce((s, o) => s + progressoObjetivo(o), 0) / lista.length),
+      total: lista.length,
+    }))
+    .sort((a, b) => a.dataInicio.localeCompare(b.dataInicio))
+
+  const porRegimeMapa = agrupar(o => {
+    if (!o.colaborador?.job_title || !o.colaborador?.department) return null
+    return regimeDoCargo.get(`${o.colaborador.job_title}::${o.colaborador.department}`) ?? null
+  })
+  const porRegime = Array.from(porRegimeMapa.entries()).map(([regime, lista]) => ({
+    regime,
+    media: Math.round(lista.reduce((s, o) => s + progressoObjetivo(o), 0) / lista.length),
+    total: lista.length,
+  }))
+
+  const statusOrdem: ObjetivoStatus[] = ['concluido', 'em_andamento', 'atrasado', 'nao_iniciado']
+  const distribuicaoStatus = statusOrdem
+    .map(status => {
+      const qtd = objetivos.filter(o => o.status === status).length
+      return { status, total: qtd, pct: total > 0 ? Math.round((qtd / total) * 100) : 0 }
+    })
+    .filter(d => d.total > 0)
+
+  return { mediaGeral, totalObjetivos: total, concluidosPct: total > 0 ? Math.round((concluidos / total) * 100) : 0, atrasados, porDepartamento, porCiclo, porRegime, distribuicaoStatus }
+}

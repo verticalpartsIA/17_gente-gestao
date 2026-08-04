@@ -19,12 +19,15 @@ import {
   listarCheckins,
   registrarCheckin,
   calcularKpis,
+  calcularAnalisePerformance,
   progressoObjetivo,
   progressoResultadoChave,
   type Objetivo,
+  type ObjetivoStatus,
   type Ciclo,
   type Checkin,
   type KpisMetas,
+  type AnalisePerformance,
 } from '@/lib/metasRepo'
 import {
   Target,
@@ -102,27 +105,36 @@ const TABS = [
   'Avaliação de Experiência',
   'Matriz 9-Box',
   'Metas / OKRs',
+  'Análise de Performance',
   'PDI',
   'Treinamentos',
 ]
 
-// O menu lateral aponta 8 valores de ?tab= para esta página. Seis têm aba real
-// — 'experiencia' passou a ter com a Avaliação de Experiência (45/90 dias).
+// O menu lateral aponta 8 valores de ?tab= para esta página. Sete têm aba real
+// — 'experiencia' passou a ter com a Avaliação de Experiência (45/90 dias),
+// 'performance' passou a ter como painel analítico sobre Metas/OKR real.
 const TAB_BY_QUERY: Record<string, number> = {
   avaliacao:    0,
   experiencia:  1,
   '9box':       2,
   metas:        3,
-  pdi:          4,
-  treinamentos: 5,
+  performance:  4,
+  pdi:          5,
+  treinamentos: 6,
 }
 
-// 'competencias' e 'performance' seguem sem tela própria. Mostram aviso honesto
-// em vez de cair silenciosamente na aba de Avaliação de Desempenho — mandar
-// para a "aba mais próxima" faz o menu parecer entregar algo que não existe.
+// 'competencias' segue sem tela própria. Mostra aviso honesto em vez de cair
+// silenciosamente na aba de Avaliação de Desempenho — mandar para a "aba
+// mais próxima" faz o menu parecer entregar algo que não existe.
 const NO_CONTENT_LABEL: Record<string, string> = {
   competencias: 'Competências',
-  performance: 'Análise de Performance',
+}
+
+const STATUS_LABEL: Record<ObjetivoStatus, string> = {
+  concluido: 'Concluído', em_andamento: 'Em andamento', atrasado: 'Atrasado', nao_iniciado: 'Não iniciado',
+}
+const STATUS_COLOR: Record<ObjetivoStatus, string> = {
+  concluido: 'bg-green-500', em_andamento: 'bg-blue-500', atrasado: 'bg-red-500', nao_iniciado: 'bg-neutral-300',
 }
 
 export default function PerformancePage() {
@@ -148,6 +160,10 @@ export default function PerformancePage() {
   const [comentarioCheckin, setComentarioCheckin] = useState('')
   const [historicoCheckin, setHistoricoCheckin] = useState<Checkin[]>([])
   const [salvandoCheckin, setSalvandoCheckin] = useState(false)
+
+  // Análise de Performance — agregação sobre os mesmos rh_metas_*, sem tabela nova.
+  const [analise, setAnalise] = useState<AnalisePerformance | null>(null)
+  const [carregandoAnalise, setCarregandoAnalise] = useState(false)
 
   const urlTab = searchParams.get('tab')
 
@@ -185,6 +201,12 @@ export default function PerformancePage() {
   }, [])
 
   useEffect(carregarMetas, [filtroCiclo, filtroDepartamento, filtroRegime])
+
+  useEffect(() => {
+    if (activeTab !== 4 || !persistenciaDisponivel()) return
+    setCarregandoAnalise(true)
+    calcularAnalisePerformance().then(setAnalise).finally(() => setCarregandoAnalise(false))
+  }, [activeTab])
 
   useEffect(() => {
     if (!krCheckin) { setHistoricoCheckin([]); return }
@@ -462,8 +484,113 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 4 — PDI */}
+        {/* Tab 4 — Análise de Performance (agregação sobre rh_metas_*, sem tabela nova) */}
         {activeTab === 4 && (
+          <div className="space-y-4">
+            {carregandoAnalise && <Loader2 className="h-5 w-5 animate-spin text-neutral-400 mx-auto" />}
+            {!carregandoAnalise && analise && (
+              <>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <KpiCard icon={TrendingUp}      color="brand" label="ATINGIMENTO MÉDIO" value={`${analise.mediaGeral}%`} sub="Todos os objetivos" />
+                  <KpiCard icon={Target}          color="blue"  label="OBJETIVOS ANALISADOS" value={String(analise.totalObjetivos)} sub="Dado real" />
+                  <KpiCard icon={ClipboardCheck}  color="green" label="% CONCLUÍDOS"      value={`${analise.concluidosPct}%`} sub="Dado real" />
+                  <KpiCard icon={AlertTriangle}   color="red"   label="ATRASADOS"         value={String(analise.atrasados.length)} sub="Precisam de atenção" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <Card theme="light">
+                    <CardHeader className="border-b border-neutral-200 pb-4"><CardTitle>Atingimento por Departamento</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 pt-4">
+                      {analise.porDepartamento.length === 0 && <p className="text-sm text-neutral-400 text-center py-4">Sem dado suficiente ainda.</p>}
+                      {analise.porDepartamento.map(d => (
+                        <div key={d.departamento} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-neutral-700">{d.departamento} <span className="text-neutral-400">({d.total})</span></span>
+                            <span className="font-bold text-neutral-700">{d.media}%</span>
+                          </div>
+                          <div className="h-2 rounded bg-neutral-100 overflow-hidden">
+                            <div className={`h-full rounded ${progressColor(d.media)}`} style={{ width: `${d.media}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card theme="light">
+                    <CardHeader className="border-b border-neutral-200 pb-4"><CardTitle>Evolução por Ciclo</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 pt-4">
+                      {analise.porCiclo.length === 0 && <p className="text-sm text-neutral-400 text-center py-4">Sem dado suficiente ainda.</p>}
+                      {analise.porCiclo.map(c => (
+                        <div key={c.cicloId} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-neutral-700">{c.cicloNome} <span className="text-neutral-400">({c.total})</span></span>
+                            <span className="font-bold text-neutral-700">{c.media}%</span>
+                          </div>
+                          <div className="h-2 rounded bg-neutral-100 overflow-hidden">
+                            <div className={`h-full rounded ${progressColor(c.media)}`} style={{ width: `${c.media}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card theme="light">
+                    <CardHeader className="border-b border-neutral-200 pb-4"><CardTitle>CLT × PJ</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 pt-4">
+                      {analise.porRegime.length === 0 && <p className="text-sm text-neutral-400 text-center py-4">Sem colaborador com cargo cadastrado o suficiente pra identificar o regime.</p>}
+                      {analise.porRegime.map(r => (
+                        <div key={r.regime} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-neutral-700">{r.regime} <span className="text-neutral-400">({r.total})</span></span>
+                            <span className="font-bold text-neutral-700">{r.media}%</span>
+                          </div>
+                          <div className="h-2 rounded bg-neutral-100 overflow-hidden">
+                            <div className={`h-full rounded ${progressColor(r.media)}`} style={{ width: `${r.media}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card theme="light">
+                    <CardHeader className="border-b border-neutral-200 pb-4"><CardTitle>Distribuição de Status</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 pt-4">
+                      {analise.distribuicaoStatus.length === 0 && <p className="text-sm text-neutral-400 text-center py-4">Sem dado suficiente ainda.</p>}
+                      <div className="flex h-4 w-full rounded overflow-hidden">
+                        {analise.distribuicaoStatus.map(d => (
+                          <div key={d.status} className={STATUS_COLOR[d.status]} style={{ width: `${d.pct}%` }} title={`${STATUS_LABEL[d.status]}: ${d.pct}%`} />
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-[11px] text-neutral-500">
+                        {analise.distribuicaoStatus.map(d => (
+                          <span key={d.status} className="flex items-center gap-1.5">
+                            <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_COLOR[d.status]}`} /> {STATUS_LABEL[d.status]} ({d.pct}%)
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card theme="light" noPadding>
+                  <CardHeader className="border-b border-neutral-200 px-5 pt-5 pb-4"><CardTitle>Objetivos Atrasados</CardTitle></CardHeader>
+                  <CardContent className="divide-y divide-neutral-100 px-5">
+                    {analise.atrasados.length === 0 && <p className="py-8 text-center text-sm text-neutral-400">Nenhum objetivo atrasado. 🎉</p>}
+                    {analise.atrasados.map(o => (
+                      <button key={o.id} onClick={() => { setActiveTab(3); abrirObjetivo(o) }} className="block w-full text-left py-3 hover:bg-neutral-50">
+                        <p className="text-sm font-medium text-neutral-900">{o.titulo}</p>
+                        <p className="text-xs text-neutral-500">{o.colaborador?.name ?? o.departamento ?? 'Corporativa'} · {progressoObjetivo(o)}% concluído</p>
+                      </button>
+                    ))}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Tab 5 — PDI */}
+        {activeTab === 5 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -515,8 +642,8 @@ export default function PerformancePage() {
           </div>
         )}
 
-        {/* Tab 5 — Treinamentos */}
-        {activeTab === 5 && (
+        {/* Tab 6 — Treinamentos */}
+        {activeTab === 6 && (
           <Card theme="light" noPadding>
             <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
               <CardTitle>Treinamentos — Ciclo 2026</CardTitle>
