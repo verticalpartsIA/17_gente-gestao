@@ -31,6 +31,7 @@ import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { KpiCard } from '@/components/ui/KpiCard'
+import { calcularKpis } from '@/lib/metasRepo'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Link } from 'react-router-dom'
@@ -155,6 +156,7 @@ export default function DashboardPage() {
 
   const [activeCount, setActiveCount] = useState<number | null>(null)
   const [directReports, setDirectReports] = useState<number | null>(null)
+  const [metasAtingidasPct, setMetasAtingidasPct] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -174,6 +176,8 @@ export default function DashboardPage() {
       }
     }
     load()
+    // Metas Atingidas — dado real (rh_metas_*, src/lib/metasRepo.ts).
+    calcularKpis().then(k => setMetasAtingidasPct(k.concluidasPct)).catch(() => setMetasAtingidasPct(null))
   }, [profile?.id])
 
   const [now, setNow] = useState(new Date())
@@ -383,9 +387,11 @@ export default function DashboardPage() {
                       <p className="text-[9px] text-slate-500 font-mono mt-0.5">Colaboradores</p>
                     </div>
                     <div className="p-3 border border-surface-border bg-surface-card rounded-md">
-                      <span className="block text-xl font-bold font-mono text-primary">—</span>
+                      <span className="block text-xl font-bold font-mono text-primary">
+                        {metasAtingidasPct === null ? '...' : `${metasAtingidasPct}%`}
+                      </span>
                       <span className="text-[10px] text-fg3 font-bold font-sans uppercase">Metas Atingidas</span>
-                      <p className="text-[9px] text-slate-500 font-mono mt-0.5">Módulo ainda não integrado</p>
+                      <p className="text-[9px] text-slate-500 font-mono mt-0.5">Dado real (rh_metas)</p>
                     </div>
                   </div>
 

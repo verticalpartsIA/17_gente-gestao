@@ -10,26 +10,60 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { AvaliacaoExperienciaTab } from '@/components/rh/AvaliacaoExperienciaTab'
 import { useAuth } from '@/lib/auth'
 import { getProfilerResumo, type ProfilerResumo } from '@/lib/profilerContract'
+import { listarDepartamentos } from '@/lib/cargosRepo'
+import { persistenciaDisponivel } from '@/lib/contratacaoRepo'
+import { NovoObjetivoModal } from '@/components/rh/NovoObjetivoModal'
+import {
+  listarObjetivos,
+  listarCiclos,
+  listarCheckins,
+  registrarCheckin,
+  calcularKpis,
+  progressoObjetivo,
+  progressoResultadoChave,
+  type Objetivo,
+  type Ciclo,
+  type Checkin,
+  type KpisMetas,
+} from '@/lib/metasRepo'
 import {
   Target,
   BookOpen,
   ClipboardCheck,
   TrendingUp,
   Clock,
-  Plus
+  Plus,
+  Loader2,
+  AlertTriangle,
+  X,
+  Send,
 } from 'lucide-react'
 
 // ── Data from HTML prototype ──────────────────────────────────────────────────
 
-// AVD, 9-Box, Metas/OKR, PDI e Treinamentos ainda não têm tabela real no
-// Supabase — inclusive alguns registros fabricados citavam o CEO real
-// (Gelson Simões) em metas/mentorias que ele nunca registrou. Arrays vazios
-// até existir integração de verdade.
+// AVD, 9-Box, PDI e Treinamentos ainda não têm tabela real no Supabase —
+// inclusive alguns registros fabricados citavam o CEO real (Gelson Simões)
+// em metas/mentorias que ele nunca registrou. Arrays vazios até existir
+// integração de verdade. Metas/OKR (issue GestãoMetas.md) já é real — ver
+// rh_metas_* / src/lib/metasRepo.ts.
 const AVD_DATA: { initials: string; name: string; dept: string; autoav: number | null; gestor: number | null; pares: number | null; media: number | null; status: string }[] = []
 const NINEBOX_CELLS: { label: string; desc: string; perf: number; pot: number; color: string; people: string[] }[] = []
-const METAS_OKR: { area: string; responsavel: string; progresso: number; meta: string }[] = []
 const PDI_AP: { titulo: string; descricao: string; prazo: string; progresso: number; status: string }[] = []
 const TREINAMENTOS: { nome: string; tipo: string; concluidos: number; total: number; progresso: number }[] = []
+
+const NIVEL_LABEL: Record<Objetivo['nivel'], string> = { corporativa: 'Corporativa', area: 'Área', individual: 'Individual' }
+
+function nivelObjetivoBadge(nivel: Objetivo['nivel']) {
+  const map: Record<Objetivo['nivel'], 'admin' | 'leader' | 'info'> = { corporativa: 'admin', area: 'leader', individual: 'info' }
+  return <Badge variant={map[nivel]}>{NIVEL_LABEL[nivel]}</Badge>
+}
+
+function statusObjetivoBadge(status: Objetivo['status']) {
+  if (status === 'concluido')    return <Badge variant="success">Concluído</Badge>
+  if (status === 'atrasado')     return <Badge variant="danger">Atrasado</Badge>
+  if (status === 'em_andamento') return <Badge variant="warning">Em andamento</Badge>
+  return <Badge variant="default">Não iniciado</Badge>
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +131,24 @@ export default function PerformancePage() {
   const [activeTab, setActiveTab] = useState(0)
   const [profiler, setProfiler] = useState<ProfilerResumo | null>(null)
 
+  // Metas / OKR — dado real (rh_metas_*, src/lib/metasRepo.ts)
+  const [ciclos, setCiclos] = useState<Ciclo[]>([])
+  const [objetivos, setObjetivos] = useState<Objetivo[]>([])
+  const [kpisMetas, setKpisMetas] = useState<KpisMetas>({ ativas: 0, noPrazo: 0, atrasadas: 0, concluidasPct: 0 })
+  const [departamentosMetas, setDepartamentosMetas] = useState<string[]>([])
+  const [carregandoMetas, setCarregandoMetas] = useState(false)
+  const [erroMetas, setErroMetas] = useState<string | null>(null)
+  const [filtroCiclo, setFiltroCiclo] = useState('')
+  const [filtroDepartamento, setFiltroDepartamento] = useState('')
+  const [filtroRegime, setFiltroRegime] = useState<'' | 'CLT' | 'PJ'>('')
+  const [modalObjetivoAberto, setModalObjetivoAberto] = useState(false)
+  const [objetivoSelecionado, setObjetivoSelecionado] = useState<Objetivo | null>(null)
+  const [krCheckin, setKrCheckin] = useState('')
+  const [valorCheckin, setValorCheckin] = useState('')
+  const [comentarioCheckin, setComentarioCheckin] = useState('')
+  const [historicoCheckin, setHistoricoCheckin] = useState<Checkin[]>([])
+  const [salvandoCheckin, setSalvandoCheckin] = useState(false)
+
   const urlTab = searchParams.get('tab')
 
   useEffect(() => {
@@ -108,6 +160,67 @@ export default function PerformancePage() {
   useEffect(() => {
     if (profile) getProfilerResumo(profile.id).then(setProfiler)
   }, [profile])
+
+  const carregarMetas = () => {
+    if (!persistenciaDisponivel()) return
+    setCarregandoMetas(true)
+    setErroMetas(null)
+    Promise.all([
+      listarObjetivos({
+        cicloId: filtroCiclo || undefined,
+        departamento: filtroDepartamento || undefined,
+        regime: filtroRegime || undefined,
+      }),
+      calcularKpis(filtroCiclo || undefined),
+    ])
+      .then(([o, k]) => { setObjetivos(o); setKpisMetas(k) })
+      .catch(e => setErroMetas(e instanceof Error ? e.message : 'Erro ao carregar metas.'))
+      .finally(() => setCarregandoMetas(false))
+  }
+
+  useEffect(() => {
+    if (!persistenciaDisponivel()) return
+    listarCiclos().then(setCiclos).catch(() => setCiclos([]))
+    listarDepartamentos().then(setDepartamentosMetas).catch(() => setDepartamentosMetas([]))
+  }, [])
+
+  useEffect(carregarMetas, [filtroCiclo, filtroDepartamento, filtroRegime])
+
+  useEffect(() => {
+    if (!krCheckin) { setHistoricoCheckin([]); return }
+    listarCheckins(krCheckin).then(setHistoricoCheckin).catch(() => setHistoricoCheckin([]))
+  }, [krCheckin])
+
+  // Reconcilia o painel aberto com a lista recém-recarregada (ex.: depois de um check-in).
+  useEffect(() => {
+    if (!objetivoSelecionado) return
+    const atualizado = objetivos.find(o => o.id === objetivoSelecionado.id)
+    if (atualizado) setObjetivoSelecionado(atualizado)
+  }, [objetivos])
+
+  function abrirObjetivo(o: Objetivo) {
+    setObjetivoSelecionado(o)
+    setKrCheckin(o.resultadosChave[0]?.id ?? '')
+    setValorCheckin('')
+    setComentarioCheckin('')
+  }
+
+  async function handleRegistrarCheckin() {
+    if (!krCheckin || !profile || valorCheckin === '') return
+    setSalvandoCheckin(true)
+    setErroMetas(null)
+    try {
+      await registrarCheckin(krCheckin, Number(valorCheckin), comentarioCheckin || null, profile.id)
+      setValorCheckin('')
+      setComentarioCheckin('')
+      carregarMetas()
+      listarCheckins(krCheckin).then(setHistoricoCheckin)
+    } catch (e) {
+      setErroMetas(e instanceof Error ? e.message : 'Erro ao registrar check-in.')
+    } finally {
+      setSalvandoCheckin(false)
+    }
+  }
 
   // Build 9-box grid: 3x3 matrix, rows = potencial (2→0 top-to-bottom), cols = performance (0→2)
   // pot=2: top row | pot=1: mid row | pot=0: bottom row
@@ -141,7 +254,7 @@ export default function PerformancePage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard icon={ClipboardCheck} color="green"  label="AVALIAÇÕES CONCLUÍDAS" value="0" sub="Módulo ainda não integrado" />
-          <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value="0"     sub="Módulo ainda não integrado" />
+          <KpiCard icon={Target}         color="brand"  label="METAS ATIVAS"          value={String(kpisMetas.ativas)} sub="Dado real (rh_metas)" />
           <KpiCard icon={TrendingUp}     color="blue"   label="PDIs ATIVOS"           value="0"     sub="Módulo ainda não integrado" />
           <KpiCard icon={BookOpen}       color="purple" label="TREINAMENTOS"           value="0"     sub="Módulo ainda não integrado" />
         </div>
@@ -279,43 +392,74 @@ export default function PerformancePage() {
           </Card>
         )}
 
-        {/* Tab 3 — Metas / OKRs */}
+        {/* Tab 3 — Metas / OKRs (dado real, rh_metas_*) */}
         {activeTab === 3 && (
-          <Card theme="light" noPadding>
-            <CardHeader className="flex flex-row items-center justify-between border-b border-neutral-200 px-5 pt-5 pb-4">
-              <CardTitle>Gestão de Metas / OKRs — Q3 2026</CardTitle>
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => alert('Nova Meta ainda não está conectado ao banco de dados.')}>Nova Meta</Button>
-            </CardHeader>
-            <CardContent className="divide-y divide-neutral-100 px-5">
-              {METAS_OKR.length === 0 && (
-                <p className="py-8 text-center text-sm text-neutral-400">Nenhuma meta/OKR cadastrada ainda.</p>
-              )}
-              {METAS_OKR.map((m, i) => (
-                <div key={i} className="py-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-neutral-900">{m.meta}</p>
-                      <p className="text-xs text-neutral-500">{m.area} · Responsável: {m.responsavel}</p>
-                    </div>
-                    <span className={`text-xl font-black ${
-                      m.progresso === 100 ? 'text-green-600' :
-                      m.progresso >= 70 ? 'text-blue-600' :
-                      m.progresso >= 40 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {m.progresso}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full rounded bg-neutral-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded transition-all ${progressColor(m.progresso)}`}
-                      style={{ width: `${m.progresso}%` }}
-                    />
-                  </div>
+          <div className="space-y-4">
+            {/* Dashboard geral */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <KpiCard icon={Target}       color="brand"  label="OBJETIVOS ATIVOS" value={String(kpisMetas.ativas)} sub="Dado real" />
+              <KpiCard icon={ClipboardCheck} color="green" label="NO PRAZO"        value={String(kpisMetas.noPrazo)} sub="Dado real" />
+              <KpiCard icon={AlertTriangle} color="red"    label="ATRASADOS"       value={String(kpisMetas.atrasadas)} sub="Dado real" />
+              <KpiCard icon={TrendingUp}    color="blue"   label="% CONCLUÍDOS"    value={`${kpisMetas.concluidasPct}%`} sub="Dado real" />
+            </div>
+
+            <Card theme="light" noPadding>
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 pt-5 pb-4">
+                <div className="flex flex-wrap gap-2">
+                  <select value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)} className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-xs">
+                    <option value="">Todos os ciclos</option>
+                    {ciclos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                  <select value={filtroDepartamento} onChange={e => setFiltroDepartamento(e.target.value)} className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-xs">
+                    <option value="">Todos os departamentos</option>
+                    {departamentosMetas.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select value={filtroRegime} onChange={e => setFiltroRegime(e.target.value as '' | 'CLT' | 'PJ')} className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-xs">
+                    <option value="">CLT e PJ</option>
+                    <option value="CLT">Só CLT</option>
+                    <option value="PJ">Só PJ</option>
+                  </select>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={() => setModalObjetivoAberto(true)}>Novo Objetivo</Button>
+              </CardHeader>
+              <CardContent className="divide-y divide-neutral-100 px-5">
+                {erroMetas && (
+                  <p className="py-3 text-xs text-red-600 flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> {erroMetas}</p>
+                )}
+                {carregandoMetas && <Loader2 className="h-4 w-4 animate-spin text-neutral-400 mx-auto my-6" />}
+                {!carregandoMetas && objetivos.length === 0 && (
+                  <p className="py-8 text-center text-sm text-neutral-400">Nenhum objetivo cadastrado ainda.</p>
+                )}
+                {objetivos.map(o => {
+                  const progresso = progressoObjetivo(o)
+                  return (
+                    <button key={o.id} onClick={() => abrirObjetivo(o)} className="block w-full text-left py-4 space-y-2 hover:bg-neutral-50">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-neutral-900 truncate">{o.titulo}</p>
+                            {nivelObjetivoBadge(o.nivel)}
+                            {statusObjetivoBadge(o.status)}
+                          </div>
+                          <p className="text-xs text-neutral-500">
+                            {o.colaborador?.name ?? o.departamento ?? 'Corporativa'} · Peso {o.peso}% · {o.resultadosChave.length} resultado(s)-chave
+                          </p>
+                        </div>
+                        <span className={`text-xl font-black shrink-0 ${
+                          progresso === 100 ? 'text-green-600' : progresso >= 70 ? 'text-blue-600' : progresso >= 40 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {progresso}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded bg-neutral-100 overflow-hidden">
+                        <div className={`h-full rounded transition-all ${progressColor(progresso)}`} style={{ width: `${progresso}%` }} />
+                      </div>
+                    </button>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Tab 4 — PDI */}
@@ -411,6 +555,92 @@ export default function PerformancePage() {
         )}
 
       </div>
+
+      {/* Side Panel — Objetivo detalhe + check-ins */}
+      {objetivoSelecionado && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setObjetivoSelecionado(null)} />
+          <div className="relative z-50 w-96 bg-white shadow-2xl overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900">Detalhe do Objetivo</h3>
+              <button onClick={() => setObjetivoSelecionado(null)} className="text-neutral-400 hover:text-neutral-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-neutral-400">Objetivo</p>
+                <p className="mt-1 text-base font-bold text-neutral-900">{objetivoSelecionado.titulo}</p>
+                {objetivoSelecionado.descricao && <p className="mt-1 text-xs text-neutral-500">{objetivoSelecionado.descricao}</p>}
+                <div className="mt-2 flex items-center gap-2">
+                  {nivelObjetivoBadge(objetivoSelecionado.nivel)}
+                  {statusObjetivoBadge(objetivoSelecionado.status)}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Resultados-Chave</p>
+                {objetivoSelecionado.resultadosChave.map(kr => {
+                  const p = progressoResultadoChave(kr)
+                  return (
+                    <div key={kr.id} className="rounded border border-neutral-200 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-neutral-800">{kr.titulo}</p>
+                        <span className="text-sm font-bold text-neutral-700">{p}%</span>
+                      </div>
+                      <p className="text-[11px] text-neutral-400">
+                        Base {kr.linha_base} → Alvo {kr.meta_alvo} · Atual {kr.valor_atual} ({kr.unidade_medida})
+                      </p>
+                      <div className="h-1.5 w-full rounded bg-neutral-100 overflow-hidden">
+                        <div className={`h-full rounded ${progressColor(p)}`} style={{ width: `${p}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Check-in */}
+              <div className="border-t border-neutral-100 pt-4 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Registrar Check-in</p>
+                <select value={krCheckin} onChange={e => setKrCheckin(e.target.value)} className="w-full rounded border border-neutral-200 bg-white px-3 py-2 text-sm">
+                  {objetivoSelecionado.resultadosChave.map(kr => <option key={kr.id} value={kr.id}>{kr.titulo}</option>)}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Novo valor atual"
+                  value={valorCheckin}
+                  onChange={e => setValorCheckin(e.target.value)}
+                  className="w-full rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <textarea
+                  placeholder="Comentário / justificativa de desvio (opcional)"
+                  value={comentarioCheckin}
+                  onChange={e => setComentarioCheckin(e.target.value)}
+                  rows={2}
+                  className="w-full resize-y rounded border border-neutral-200 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <Button size="sm" className="w-full" leftIcon={<Send className="h-3.5 w-3.5" />} loading={salvandoCheckin} disabled={valorCheckin === ''} onClick={handleRegistrarCheckin}>
+                  Registrar
+                </Button>
+              </div>
+
+              {historicoCheckin.length > 0 && (
+                <div className="border-t border-neutral-100 pt-4 space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Histórico</p>
+                  {historicoCheckin.map(c => (
+                    <div key={c.id} className="text-xs text-neutral-600 border-l-2 border-neutral-200 pl-2">
+                      <p>{c.valor_anterior} → <strong>{c.valor_novo}</strong> <span className="text-neutral-400">{new Date(c.criado_em).toLocaleString('pt-BR')}</span></p>
+                      {c.comentario && <p className="text-neutral-500 italic">{c.comentario}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <NovoObjetivoModal open={modalObjetivoAberto} onClose={() => setModalObjetivoAberto(false)} onSalvo={carregarMetas} />
     </AppShell>
   )
 }
