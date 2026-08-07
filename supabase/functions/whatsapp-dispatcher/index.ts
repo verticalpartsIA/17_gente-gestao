@@ -26,6 +26,10 @@ const EVO_INSTANCE = 'pv360'
 
 const RH_PATTERN = /^1$|vaga|emprego|candidat|curr[ií]culo|trabalh|rh\b/
 const SUPORTE_PATTERN = /^2$|suporte|atendimento|pedido|reclama|d[uú]vida|pos.?venda|produto/
+// Comando de escape: quem já foi roteado (rh OU posvenda) mas escolheu
+// errado por engano precisa de um jeito de voltar pro menu. Sem isso a
+// decisão é permanente e a pessoa fica presa/sem resposta pra sempre.
+const MENU_PATTERN = /^(menu|voltar|trocar|reiniciar)\b/
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -137,6 +141,25 @@ serve(async (req: Request) => {
       return await relayOrFail()
     }
 
+    // Comando universal de escape — funciona em qualquer estado já decidido
+    // (rh OU posvenda) pra quem escolheu errado (ex: apertou "1" por engano,
+    // como aconteceu de verdade em 03/08) não ficar presa pra sempre no
+    // departamento errado sem nenhuma resposta. Só reage a mensagem real do
+    // contato (fromMe=false) — nunca ao nosso próprio eco.
+    if (!fromMe && existing?.departamento && MENU_PATTERN.test(body.trim().toLowerCase())) {
+      const { error: resetError } = await sb.from('contratacao_whatsapp_routing')
+        .update({ departamento: null, status: 'aguardando_escolha', tentativas: 0, decidido_em: null })
+        .eq('remote_jid', remoteJid)
+      if (resetError) console.error('whatsapp-dispatcher: reset routing (menu) falhou', resetError)
+
+      const enviado = await sendText(
+        apikey, jidToPhone(remoteJid),
+        'Sem problemas! 👋 Você quer falar sobre uma *vaga de emprego* ou sobre *um pedido/produto*?\n\nResponda *1* para Vagas (RH) ou *2* para Suporte.',
+      )
+      if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
+      return json({ ok: true })
+    }
+
     // Já roteado pro RH — grava aqui, não repassa.
     if (existing?.departamento === 'rh') {
       const { error } = await sb.from('contratacao_whatsapp_mensagens').insert({
@@ -201,7 +224,7 @@ serve(async (req: Request) => {
       }
       // Confirmação é cortesia — a mensagem do candidato já está gravada
       // acima, então uma falha aqui não perde nada, só não avisa a pessoa.
-      const enviado = await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊')
+      const enviado = await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊\n\n(Errou o assunto? Digite *menu* a qualquer momento pra trocar.)')
       if (!enviado) console.warn('whatsapp-dispatcher: confirmação de RH não foi entregue')
       return json({ ok: true })
     }
