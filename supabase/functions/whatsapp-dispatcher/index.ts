@@ -2,12 +2,13 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
- * Central de roteamento do WhatsApp compartilhado com o Pós-Venda.
- *
- * Único alvo do webhook da instância Evolution API (pv360). Decide se cada
- * conversa é do RH (Atração de Talentos) ou do Pós-Venda, e SÓ intercepta o
- * que for classificado como RH — tudo o mais é repassado sem alteração pro
- * webhook que o Pós-Venda já usa hoje, para não tocar no código/banco dele.
+ * Central de roteamento do WhatsApp compartilhado com o Pós-Venda — modelo
+ * de PABX: toda conversa "nova" (primeiro contato, ou uma conversa que
+ * esfriou / cujo atendimento anterior já foi concluído) recebe o menu de
+ * ramais de novo, igual uma central telefônica pergunta de novo em cada
+ * ligação. Depois de decidido, SÓ intercepta o que for RH — tudo o mais é
+ * repassado sem alteração pro webhook que o Pós-Venda já usa hoje, para não
+ * tocar no código/banco dele.
  *
  * Princípio de segurança: qualquer erro inesperado aqui cai no mesmo lugar
  * que o comportamento de HOJE (repassar tudo pro Pós-Venda) — nunca some
@@ -21,15 +22,60 @@ const CORS = {
 
 const SB_URL = 'https://ubdkoqxfwcraftesgmbw.supabase.co'
 const POSVENDA_WEBHOOK_URL = 'https://posvenda360.vpsistema.com/api/whatsapp/webhook'
+const POSVENDA_SB_URL = 'https://jkbklzlbhhfnamaeislb.supabase.co'
 const EVO_URL = Deno.env.get('EVOLUTION_URL') ?? 'http://72.61.48.156:8080'
 const EVO_INSTANCE = 'pv360'
 
-const RH_PATTERN = /^1$|vaga|emprego|candidat|curr[ií]culo|trabalh|rh\b/
-const SUPORTE_PATTERN = /^2$|suporte|atendimento|pedido|reclama|d[uú]vida|pos.?venda|produto/
-// Comando de escape: quem já foi roteado (rh OU posvenda) mas escolheu
-// errado por engano precisa de um jeito de voltar pro menu. Sem isso a
-// decisão é permanente e a pessoa fica presa/sem resposta pra sempre.
-const MENU_PATTERN = /^(menu|voltar|trocar|reiniciar)\b/
+// Depois de quanto tempo sem mensagem uma conversa "esfria" e volta a
+// perguntar o menu, mesmo sem o atendimento ter sido encerrado formalmente.
+// 24h = mesma janela que o WhatsApp Business usa pra sessão de atendimento.
+const INATIVIDADE_MS = 24 * 60 * 60 * 1000
+
+// Comando universal de escape — funciona em qualquer estado já decidido
+// (qualquer ramal) pra quem escolheu errado (ex: apertou "1" por engano,
+// como aconteceu de verdade em 03/08) não ficar presa pra sempre. "0" é o
+// dígito convencional de "voltar/operadora" em centrais telefônicas.
+const MENU_PATTERN = /^0$|^(menu|voltar|trocar|reiniciar)\b/
+
+/**
+ * Ramais da central. Adicionar um novo setor no futuro é: um item aqui +
+ * (se for um handler novo, não "log" nem "relay") uma entrada no switch de
+ * handleRamal(). Não precisa tocar no resto do fluxo (menu, escape, retry).
+ */
+type HandlerRamal = 'log_rh' | 'relay_posvenda'
+interface Ramal {
+  key: string
+  digito: string
+  pergunta: string // usado na pergunta do menu: "... sobre ${pergunta}?"
+  label: string // usado em "Responda X para ${label}"
+  pattern: RegExp
+  handler: HandlerRamal
+}
+
+const RAMAIS: Ramal[] = [
+  {
+    key: 'rh',
+    digito: '1',
+    pergunta: 'uma *vaga de emprego*',
+    label: 'Vagas (RH)',
+    pattern: /^1$|vaga|emprego|candidat|curr[ií]culo|trabalh|rh\b/,
+    handler: 'log_rh',
+  },
+  {
+    key: 'posvenda',
+    digito: '2',
+    pergunta: 'um *pedido/produto*',
+    label: 'Suporte',
+    pattern: /^2$|suporte|atendimento|pedido|reclama|d[uú]vida|pos.?venda|produto/,
+    handler: 'relay_posvenda',
+  },
+]
+
+function textoMenu(saudacao: string): string {
+  const perguntas = RAMAIS.map((r) => r.pergunta).join(' ou sobre ')
+  const opcoes = RAMAIS.map((r) => `*${r.digito}* para ${r.label}`).join(' ou ')
+  return `${saudacao} Pra te encaminhar certo: você quer falar sobre ${perguntas}?\n\nResponda ${opcoes}.`
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -82,6 +128,41 @@ async function relayToPosvenda(rawBody: string, apikey: string): Promise<boolean
   }
 }
 
+/**
+ * true só se conseguirmos AFIRMAR que o ticket mais recente desse telefone
+ * no Pós-Venda está concluído. Qualquer incerteza (chave não configurada,
+ * erro de rede, telefone sem ticket algum) retorna false — nunca reabre o
+ * menu por engano, só quando tem certeza que o atendimento anterior fechou.
+ */
+async function ultimoAtendimentoConcluido(numero: string): Promise<boolean> {
+  const key = Deno.env.get('POSVENDA_SERVICE_ROLE_KEY')
+  if (!key) return false
+  try {
+    const sbPos = createClient(POSVENDA_SB_URL, key)
+    const { data: msg, error: msgError } = await sbPos
+      .from('whatsapp_messages')
+      .select('ticket_id')
+      .eq('phone', numero)
+      .not('ticket_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (msgError || !msg?.ticket_id) return false
+
+    const { data: ticket, error: ticketError } = await sbPos
+      .from('tickets')
+      .select('status')
+      .eq('id', msg.ticket_id)
+      .maybeSingle()
+    if (ticketError || !ticket) return false
+
+    return ticket.status === 'concluido'
+  } catch (err) {
+    console.error('whatsapp-dispatcher: falha ao checar ticket do Pós-Venda (seguindo fluxo normal)', err)
+    return false
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method === 'GET') return new Response('OK', { headers: CORS })
@@ -120,6 +201,8 @@ serve(async (req: Request) => {
     const isGroup = remoteJid.endsWith('@g.us')
     const body = extractBody(message)
     const messageId: string | null = key.id ?? null
+    const numero = jidToPhone(remoteJid)
+    const agora = new Date()
 
     if (isGroup) {
       return await relayOrFail()
@@ -141,23 +224,35 @@ serve(async (req: Request) => {
       return await relayOrFail()
     }
 
-    // Comando universal de escape — funciona em qualquer estado já decidido
-    // (rh OU posvenda) pra quem escolheu errado (ex: apertou "1" por engano,
-    // como aconteceu de verdade em 03/08) não ficar presa pra sempre no
-    // departamento errado sem nenhuma resposta. Só reage a mensagem real do
-    // contato (fromMe=false) — nunca ao nosso próprio eco.
-    if (!fromMe && existing?.departamento && MENU_PATTERN.test(body.trim().toLowerCase())) {
-      const { error: resetError } = await sb.from('contratacao_whatsapp_routing')
-        .update({ departamento: null, status: 'aguardando_escolha', tentativas: 0, decidido_em: null })
+    /** Reseta o roteamento e reapresenta o menu — "nova ligação". */
+    async function voltarAoMenu(saudacao: string): Promise<Response> {
+      const { error: resetError } = await sb
+        .from('contratacao_whatsapp_routing')
+        .update({ departamento: null, status: 'aguardando_escolha', tentativas: 0, decidido_em: null, last_message_at: agora.toISOString() })
         .eq('remote_jid', remoteJid)
       if (resetError) console.error('whatsapp-dispatcher: reset routing (menu) falhou', resetError)
 
-      const enviado = await sendText(
-        apikey, jidToPhone(remoteJid),
-        'Sem problemas! 👋 Você quer falar sobre uma *vaga de emprego* ou sobre *um pedido/produto*?\n\nResponda *1* para Vagas (RH) ou *2* para Suporte.',
-      )
+      const enviado = await sendText(apikey, numero, textoMenu(saudacao))
       if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
       return json({ ok: true })
+    }
+
+    // Comando universal de escape — igual discar "0" numa central: funciona
+    // sempre, mesmo já decidido, pra quem entrou no ramal errado.
+    if (!fromMe && existing?.departamento && MENU_PATTERN.test(body.trim().toLowerCase())) {
+      return await voltarAoMenu('Sem problemas! 👋')
+    }
+
+    // Reset automático de "conversa esfriada" ou "atendimento já concluído"
+    // — mesmo sem a pessoa pedir, uma central de telefone pergunta de novo
+    // numa "nova ligação". Só entra aqui se JÁ havia um ramal decidido.
+    if (!fromMe && existing?.departamento) {
+      const ultima = existing.last_message_at ? new Date(existing.last_message_at as string).getTime() : 0
+      const esfriou = agora.getTime() - ultima > INATIVIDADE_MS
+      const concluido = existing.departamento === 'posvenda' && (await ultimoAtendimentoConcluido(numero))
+      if (esfriou || concluido) {
+        return await voltarAoMenu('Olá de novo! 👋')
+      }
     }
 
     // Já roteado pro RH — grava aqui, não repassa.
@@ -171,12 +266,15 @@ serve(async (req: Request) => {
         console.error('whatsapp-dispatcher: insert mensagem rh falhou', error)
         return json({ error: 'Falha ao gravar a mensagem' }, 500)
       }
+      await sb.from('contratacao_whatsapp_routing').update({ last_message_at: agora.toISOString() }).eq('remote_jid', remoteJid)
       return json({ ok: true })
     }
 
     // Já roteado pro Pós-Venda — repassa sem tocar em nada.
     if (existing?.departamento === 'posvenda') {
-      return await relayOrFail()
+      const relayed = await relayOrFail()
+      await sb.from('contratacao_whatsapp_routing').update({ last_message_at: agora.toISOString() }).eq('remote_jid', remoteJid)
+      return relayed
     }
 
     // Eco de uma mensagem nossa (fromMe) sem linha de roteamento ainda — não
@@ -188,28 +286,23 @@ serve(async (req: Request) => {
     }
 
     const texto = body.trim().toLowerCase()
-    const ehRH = RH_PATTERN.test(texto)
-    const ehSuporte = SUPORTE_PATTERN.test(texto)
-    const numero = jidToPhone(remoteJid)
+    const ramalEscolhido = RAMAIS.find((r) => r.pattern.test(texto))
 
     // Primeiro contato — pergunta e não repassa nada ainda.
     if (!existing) {
       const { error: insertRoutingError } = await sb.from('contratacao_whatsapp_routing').insert({
-        remote_jid: remoteJid, push_name: pushName ?? null, status: 'aguardando_escolha', tentativas: 0,
+        remote_jid: remoteJid, push_name: pushName ?? null, status: 'aguardando_escolha', tentativas: 0, last_message_at: agora.toISOString(),
       })
       if (insertRoutingError) console.error('whatsapp-dispatcher: insert routing (1o contato) falhou', insertRoutingError)
 
-      const enviado = await sendText(
-        apikey, numero,
-        'Olá! 👋 Pra te encaminhar certo: você quer falar sobre uma *vaga de emprego* ou sobre *um pedido/produto*?\n\nResponda *1* para Vagas (RH) ou *2* para Suporte.',
-      )
+      const enviado = await sendText(apikey, numero, textoMenu('Olá! 👋'))
       if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
       return json({ ok: true })
     }
 
-    if (ehRH) {
+    if (ramalEscolhido?.handler === 'log_rh') {
       const { error: updError } = await sb.from('contratacao_whatsapp_routing')
-        .update({ departamento: 'rh', status: 'decidido', decidido_em: new Date().toISOString() })
+        .update({ departamento: 'rh', status: 'decidido', decidido_em: agora.toISOString(), last_message_at: agora.toISOString() })
         .eq('remote_jid', remoteJid)
       if (updError) {
         console.error('whatsapp-dispatcher: update routing (rh) falhou', updError)
@@ -224,14 +317,14 @@ serve(async (req: Request) => {
       }
       // Confirmação é cortesia — a mensagem do candidato já está gravada
       // acima, então uma falha aqui não perde nada, só não avisa a pessoa.
-      const enviado = await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊\n\n(Errou o assunto? Digite *menu* a qualquer momento pra trocar.)')
+      const enviado = await sendText(apikey, numero, 'Perfeito! Você está falando com o time de Recrutamento da VerticalParts. Em breve alguém te responde por aqui. 😊\n\n(Errou o assunto? Digite *menu* ou *0* a qualquer momento pra trocar.)')
       if (!enviado) console.warn('whatsapp-dispatcher: confirmação de RH não foi entregue')
       return json({ ok: true })
     }
 
-    if (ehSuporte) {
+    if (ramalEscolhido?.handler === 'relay_posvenda') {
       const { error: updError } = await sb.from('contratacao_whatsapp_routing')
-        .update({ departamento: 'posvenda', status: 'decidido', decidido_em: new Date().toISOString() })
+        .update({ departamento: 'posvenda', status: 'decidido', decidido_em: agora.toISOString(), last_message_at: agora.toISOString() })
         .eq('remote_jid', remoteJid)
       if (updError) console.error('whatsapp-dispatcher: update routing (posvenda) falhou', updError)
       return await relayOrFail()
@@ -243,13 +336,15 @@ serve(async (req: Request) => {
     const tentativas = (existing.tentativas ?? 0) + 1
     if (tentativas >= 3) {
       const { error: updError } = await sb.from('contratacao_whatsapp_routing')
-        .update({ departamento: 'posvenda', status: 'decidido', decidido_em: new Date().toISOString(), tentativas })
+        .update({ departamento: 'posvenda', status: 'decidido', decidido_em: agora.toISOString(), tentativas, last_message_at: agora.toISOString() })
         .eq('remote_jid', remoteJid)
       if (updError) console.error('whatsapp-dispatcher: update routing (fallback posvenda) falhou', updError)
       return await relayOrFail()
     }
 
-    const { error: tentError } = await sb.from('contratacao_whatsapp_routing').update({ tentativas }).eq('remote_jid', remoteJid)
+    const { error: tentError } = await sb.from('contratacao_whatsapp_routing')
+      .update({ tentativas, last_message_at: agora.toISOString() })
+      .eq('remote_jid', remoteJid)
     if (tentError) console.error('whatsapp-dispatcher: update tentativas falhou', tentError)
     const enviado = await sendText(apikey, numero, 'Não entendi 🙏 Responda só *1* (vaga de emprego) ou *2* (suporte/pedido).')
     if (!enviado) return json({ error: 'Falha ao enviar o menu' }, 502)
