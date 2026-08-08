@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/app/AppShell'
-import { DemoDataBanner } from '@/components/ui/DemoDataBanner'
 import { NAV_ITEMS } from '../DashboardPage'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -466,8 +465,6 @@ export default function AtracaoPage() {
   return (
     <AppShell navItems={NAV_ITEMS} pageTitle="ATRAÇÃO DE TALENTOS">
       <div className="space-y-6">
-        <DemoDataBanner />
-
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard icon={Briefcase} color="blue"  label="VAGAS EM ABERTO"  value={String(kpiAberto)}  sub="Requisições ativas" onClick={() => irParaColunaKanban(null)} />
